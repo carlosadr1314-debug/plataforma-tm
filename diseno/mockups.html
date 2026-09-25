@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockups — Plataforma de trade marketing · Apatayana</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --arena:#F5F4F1;
+  --superficie:#FFFFFF;
+  --tinta:#1C1A17;
+  --tinta-2:#6B6560;
+  --borde:#DFDCD6;
+  --azul:#16324F;
+  --azul-claro:#E7ECF2;
+  --naranja:#E8622A;
+  --exito:#1E7A4B;
+  --alerta:#C8891A;
+  --error:#C0392B;
+  --r:10px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--arena);
+  color:var(--tinta);
+  font-family:'Inter',system-ui,sans-serif;
+  font-size:15px;
+  line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+.disp{font-family:'Barlow Condensed','Inter',sans-serif;text-transform:uppercase;letter-spacing:.02em;line-height:1.1}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px 96px}
+
+/* ---------- portada ---------- */
+.portada{border-bottom:3px solid var(--tinta);padding:56px 0 28px;margin-bottom:48px}
+.kicker{font-size:12px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--naranja);margin:0 0 10px}
+h1.disp{font-size:clamp(38px,6vw,64px);font-weight:700;margin:0 0 14px}
+.lede{font-size:17px;color:var(--tinta-2);max-width:60ch;margin:0}
+.meta{display:flex;flex-wrap:wrap;gap:28px;margin-top:26px;font-size:13px;color:var(--tinta-2)}
+.meta b{display:block;color:var(--tinta);font-size:14px;font-weight:600}
+
+/* ---------- secciones ---------- */
+section{margin-top:72px}
+h2.disp{font-size:30px;font-weight:600;margin:0 0 6px;padding-bottom:10px;border-bottom:1px solid var(--borde)}
+.sub{color:var(--tinta-2);font-size:14px;margin:0 0 32px;max-width:65ch}
+
+/* ---------- teléfonos ---------- */
+.fila{display:flex;flex-wrap:wrap;gap:34px;justify-content:flex-start}
+.unidad{width:296px}
+.cap{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--tinta-2);margin:14px 0 0}
+.cap span{display:block;text-transform:none;letter-spacing:0;font-weight:400;font-size:13px;margin-top:3px}
+.tel{
+  width:296px;background:#111;border-radius:30px;padding:9px;
+  box-shadow:0 10px 28px rgba(28,26,23,.16);
+}
+.pant{background:var(--superficie);border-radius:22px;overflow:hidden;height:590px;display:flex;flex-direction:column}
+.barra{background:var(--azul);color:#fff;font-size:10px;display:flex;justify-content:space-between;padding:7px 16px 5px;font-variant-numeric:tabular-nums}
+.appbar{background:var(--azul);color:#fff;padding:10px 16px 16px}
+.appbar .t{font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;font-size:21px;font-weight:600;letter-spacing:.02em}
+.appbar .s{font-size:11.5px;opacity:.82;margin-top:1px}
+.cuerpo{flex:1;overflow:hidden;padding:14px;background:var(--arena)}
+.nav{display:flex;border-top:1px solid var(--borde);background:var(--superficie)}
+.nav div{flex:1;text-align:center;padding:9px 2px 11px;font-size:9.5px;font-weight:500;color:var(--tinta-2)}
+.nav div.on{color:var(--azul);font-weight:600}
+.nav svg{display:block;margin:0 auto 3px}
+
+/* piezas de UI */
+.tarjeta{background:var(--superficie);border:1px solid var(--borde);border-radius:var(--r);padding:12px 13px;margin-bottom:9px}
+.tarjeta.hecha{border-left:4px solid var(--exito)}
+.tarjeta.curso{border-left:4px solid var(--naranja)}
+.tarjeta.pend{border-left:4px solid var(--borde)}
+.pdv{font-weight:600;font-size:13.5px;line-height:1.25}
+.dir{font-size:11.5px;color:var(--tinta-2);margin-top:2px}
+.linea{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.chip{font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 7px;border-radius:20px;white-space:nowrap}
+.c-ok{background:#DCEFE4;color:#155635}
+.c-cur{background:#FBE0D3;color:#8A3312}
+.c-pen{background:#EAE7E2;color:#5A554F}
+.c-err{background:#F7DEDB;color:#8E2A20}
+
+.aviso{display:flex;gap:8px;align-items:flex-start;background:#FDF2E2;border:1px solid #EFD4A8;border-radius:8px;padding:9px 10px;margin-bottom:12px;font-size:11.5px;color:#6E4C10;line-height:1.4}
+.aviso svg{flex:none;margin-top:1px}
+
+.prog{height:6px;background:#E4E1DB;border-radius:4px;overflow:hidden;margin:9px 0 4px}
+.prog i{display:block;height:100%;background:var(--naranja)}
+.resumen{display:flex;gap:8px;margin-bottom:13px}
+.kpi{flex:1;background:var(--superficie);border:1px solid var(--borde);border-radius:var(--r);padding:9px 10px;text-align:center}
+.kpi b{display:block;font-family:'Barlow Condensed',sans-serif;font-size:25px;font-weight:600;line-height:1;font-variant-numeric:tabular-nums}
+.kpi span{font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--tinta-2);font-weight:600}
+
+.btn{display:block;width:100%;background:var(--azul);color:#fff;border:0;border-radius:9px;padding:14px;font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;cursor:pointer;min-height:48px}
+.btn.sec{background:transparent;color:var(--azul);border:1.5px solid var(--azul)}
+.btn:focus-visible{outline:3px solid var(--naranja);outline-offset:2px}
+
+.mapa{height:112px;border-radius:var(--r);border:1px solid var(--borde);background:
+  repeating-linear-gradient(0deg,#E9E6E0 0 1px,transparent 1px 22px),
+  repeating-linear-gradient(90deg,#E9E6E0 0 1px,transparent 1px 22px),#F3F1EC;
+  position:relative;margin-bottom:11px;overflow:hidden}
+.mapa .via{position:absolute;background:#DCD8D0}
+.pin{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:16px;height:16px;border-radius:50%;background:var(--naranja);border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3)}
+.halo{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:78px;height:78px;border-radius:50%;background:rgba(232,98,42,.14);border:1.5px dashed var(--naranja)}
+.geo{position:absolute;left:8px;bottom:8px;background:rgba(28,26,23,.86);color:#fff;font-size:10px;padding:3px 7px;border-radius:5px;font-variant-numeric:tabular-nums}
+
+label.lb{display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--tinta-2);margin:0 0 5px}
+.campo{background:var(--superficie);border:1px solid var(--borde);border-radius:8px;padding:10px 11px;font-size:13px;margin-bottom:12px}
+.campo.foco{border-color:var(--azul);box-shadow:0 0 0 3px rgba(22,50,79,.13)}
+.campo .ph{color:#A39D96}
+.seg{display:flex;gap:7px;margin-bottom:12px}
+.seg div{flex:1;text-align:center;border:1.5px solid var(--borde);background:var(--superficie);border-radius:8px;padding:11px 4px;font-size:12.5px;font-weight:600;min-height:44px;display:flex;align-items:center;justify-content:center}
+.seg div.on{border-color:var(--azul);background:var(--azul);color:#fff}
+.errmsg{display:flex;gap:5px;align-items:center;font-size:11px;color:var(--error);margin:-7px 0 12px;font-weight:500}
+.sku{font-size:10px;font-weight:700;letter-spacing:.05em;color:var(--naranja);text-transform:uppercase;margin-bottom:3px}
+.preg{font-size:13px;font-weight:600;margin-bottom:7px;line-height:1.35}
+.req{color:var(--error)}
+
+.fotos{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:12px}
+.foto{aspect-ratio:3/4;border-radius:8px;border:1px solid var(--borde);background:linear-gradient(150deg,#D8D3CB,#BEB8AE);position:relative;overflow:hidden}
+.foto:nth-child(2){background:linear-gradient(150deg,#C9CFD6,#A8B2BC)}
+.foto:nth-child(3){background:linear-gradient(150deg,#D6CFC2,#BBAF9B)}
+.foto b{position:absolute;left:4px;bottom:4px;color:#fff;font-size:8.5px;font-weight:600;text-shadow:0 1px 3px rgba(0,0,0,.6)}
+.addfoto{aspect-ratio:3/4;border-radius:8px;border:1.5px dashed var(--azul);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--azul);font-size:9.5px;font-weight:600;text-align:center;padding:4px}
+
+.cola{background:var(--superficie);border:1px solid var(--borde);border-radius:var(--r);padding:11px 12px;margin-bottom:9px;display:flex;gap:10px;align-items:center}
+.cola .ic{flex:none;width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center}
+.i-ok{background:#DCEFE4;color:#155635}
+.i-sube{background:var(--azul-claro);color:var(--azul)}
+.i-esp{background:#EAE7E2;color:#5A554F}
+.cola .tx{flex:1;min-width:0}
+.cola .t1{font-size:12.5px;font-weight:600;line-height:1.25}
+.cola .t2{font-size:10.5px;color:var(--tinta-2);margin-top:1px;font-variant-numeric:tabular-nums}
+
+/* ---------- consola web ---------- */
+.pc{border:1px solid var(--borde);border-radius:var(--r);overflow:hidden;background:var(--superficie);box-shadow:0 8px 24px rgba(28,26,23,.09);margin-bottom:14px}
+.pc .crom{background:#E4E1DB;padding:8px 12px;display:flex;gap:6px;align-items:center;border-bottom:1px solid var(--borde)}
+.pc .crom i{width:9px;height:9px;border-radius:50%;background:#BDB7AE;display:block}
+.pc .crom .url{flex:1;background:var(--superficie);border-radius:5px;font-size:11px;color:var(--tinta-2);padding:3px 9px;margin-left:8px}
+.app{display:flex;min-height:430px}
+.side{width:186px;flex:none;background:var(--azul);color:#fff;padding:16px 0}
+.side .marca{font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;font-size:19px;font-weight:600;letter-spacing:.04em;padding:0 16px 14px;border-bottom:1px solid rgba(255,255,255,.16);margin-bottom:12px}
+.side .marca em{display:block;font-style:normal;font-family:'Inter',sans-serif;text-transform:none;font-size:10.5px;font-weight:400;opacity:.7;letter-spacing:0;margin-top:2px}
+.side a{display:flex;gap:9px;align-items:center;padding:8px 16px;font-size:12.5px;color:rgba(255,255,255,.82);text-decoration:none}
+.side a.on{background:rgba(255,255,255,.13);color:#fff;font-weight:600;box-shadow:inset 3px 0 0 var(--naranja)}
+.side .grp{font-size:9.5px;text-transform:uppercase;letter-spacing:.1em;opacity:.5;padding:14px 16px 5px;font-weight:600}
+.main{flex:1;padding:18px 20px;background:var(--arena);min-width:0;overflow-x:auto}
+.tope{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.tope h3{font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;font-size:23px;font-weight:600;margin:0;letter-spacing:.02em}
+.tope p{margin:2px 0 0;font-size:12px;color:var(--tinta-2)}
+.bsm{background:var(--azul);color:#fff;border:0;border-radius:7px;padding:9px 15px;font-size:12.5px;font-weight:600;min-height:40px;cursor:pointer}
+.bsm.gh{background:transparent;color:var(--azul);border:1.5px solid var(--borde)}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;margin-bottom:16px}
+.kpis .k{background:var(--superficie);border:1px solid var(--borde);border-radius:var(--r);padding:12px 13px}
+.kpis .k span{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--tinta-2);font-weight:600}
+.kpis .k b{display:block;font-family:'Barlow Condensed',sans-serif;font-size:31px;font-weight:600;line-height:1.05;margin-top:3px;font-variant-numeric:tabular-nums}
+.kpis .k i{font-style:normal;font-size:11px;font-weight:600}
+.kpis .k.acc{border-top:3px solid var(--naranja)}
+.tblbox{overflow-x:auto;background:var(--superficie);border:1px solid var(--borde);border-radius:var(--r)}
+table{border-collapse:collapse;width:100%;min-width:600px;font-size:12.5px}
+th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--tinta-2);padding:10px 12px;border-bottom:1px solid var(--borde);font-weight:700;white-space:nowrap}
+td{padding:10px 12px;border-bottom:1px solid #EFEDE9;vertical-align:middle}
+tr:last-child td{border-bottom:0}
+td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+.mini{width:26px;height:26px;border-radius:5px;background:#CFC9C0;display:inline-block;vertical-align:middle;margin-right:3px;border:1px solid var(--borde)}
+.mini.b{background:#B9C2CC}
+
+.constr{display:grid;grid-template-columns:1fr 232px;gap:14px}
+.lienzo{background:var(--superficie);border:1px solid var(--borde);border-radius:var(--r);padding:14px}
+.qitem{border:1px solid var(--borde);border-radius:8px;padding:10px 11px;margin-bottom:9px;display:flex;gap:10px;align-items:flex-start;background:var(--superficie)}
+.qitem.sel{border-color:var(--azul);box-shadow:0 0 0 3px rgba(22,50,79,.11)}
+.drag{flex:none;color:#B5AFA7;cursor:grab;margin-top:2px}
+.qitem .qt{flex:1;min-width:0}
+.qitem .q1{font-size:12.5px;font-weight:600;line-height:1.3}
+.qitem .q2{font-size:10.5px;color:var(--tinta-2);margin-top:3px}
+.tipo{font-size:9px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;background:var(--azul-claro);color:var(--azul);padding:2px 6px;border-radius:4px}
+.props{background:var(--superficie);border:1px solid var(--borde);border-radius:var(--r);padding:13px}
+.props h4{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--tinta-2);margin:0 0 11px;font-weight:700}
+.pcampo{border:1px solid var(--borde);border-radius:7px;padding:8px 9px;font-size:12px;margin-bottom:11px;background:var(--superficie)}
+.sw{display:flex;justify-content:space-between;align-items:center;font-size:12px;margin-bottom:11px}
+.sw i{width:34px;height:20px;border-radius:12px;background:var(--azul);position:relative;flex:none}
+.sw i::after{content:'';position:absolute;right:2px;top:2px;width:16px;height:16px;border-radius:50%;background:#fff}
+.addq{border:1.5px dashed var(--borde);border-radius:8px;padding:11px;text-align:center;font-size:12px;font-weight:600;color:var(--azul)}
+
+/* ---------- notas ---------- */
+.notas{background:var(--superficie);border:1px solid var(--borde);border-left:4px solid var(--naranja);border-radius:var(--r);padding:20px 24px;margin-top:26px}
+.notas h4{font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;font-size:17px;margin:0 0 10px;letter-spacing:.03em}
+.notas ul{margin:0;padding-left:19px;font-size:13.5px;color:var(--tinta-2)}
+.notas li{margin-bottom:6px}
+.notas strong{color:var(--tinta)}
+.pie{margin-top:56px;padding-top:20px;border-top:1px solid var(--borde);font-size:12px;color:var(--tinta-2)}
+
+@media (max-width:900px){
+  .kpis{grid-template-columns:1fr 1fr}
+  .constr{grid-template-columns:1fr}
+  .app{flex-direction:column}
+  .side{width:100%}
+}
+@media (max-width:420px){
+  .wrap{padding:0 14px 60px}
+  .tel,.unidad{width:100%;max-width:296px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+@media print{
+  body{background:#fff}
+  .pc,.tel{box-shadow:none}
+  section{break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="portada">
+  <p class="kicker">Evidencia de diseño · Fase 1</p>
+  <h1 class="disp">Plataforma de trade&nbsp;marketing</h1>
+  <p class="lede">Propuesta visual de la aplicación de campo para Android y de la consola web de administración. Las pantallas reflejan el alcance definido en el documento de Fase 1.</p>
+  <div class="meta">
+    <div><b>Apatayana Agencia de Mkt</b>Cliente</div>
+    <div><b>Fase 1 — Ciclo operativo</b>Alcance</div>
+    <div><b>React Native · Expo</b>App Android</div>
+    <div><b>React · PostgreSQL</b>Consola web</div>
+  </div>
+</header>
+
+<section>
+  <h2 class="disp">Aplicación de campo — Android</h2>
+  <p class="sub">Diseñada para el promotor: de pie en el pasillo, con una mano, mala iluminación y prisa. Objetivos táctiles de 48&nbsp;px, contraste alto y nada que dependa de conexión.</p>
+
+  <div class="fila">
+
+    <!-- 1. Itinerario -->
+    <div class="unidad">
+      <div class="tel"><div class="pant">
+        <div class="barra"><span>9:12</span><span>Sin conexión</span></div>
+        <div class="appbar">
+          <div class="t">Mi ruta de hoy</div>
+          <div class="s">Lunes 14 de septiembre · Televia</div>
+        </div>
+        <div class="cuerpo">
+          <div class="aviso">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M12 9v4M12 17h.01M10.3 3.9 2 18a2 2 0 0 0 1.7 3h16.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+            <span>Trabajando sin conexión. Tus 3 visitas se enviarán solas al recuperar señal.</span>
+          </div>
+          <div class="resumen">
+            <div class="kpi"><b>3</b><span>Hechas</span></div>
+            <div class="kpi"><b>1</b><span>En curso</span></div>
+            <div class="kpi"><b>4</b><span>Faltan</span></div>
+          </div>
+          <div class="tarjeta curso">
+            <div class="linea"><div class="pdv">Oxxo Reforma 226</div><span class="chip c-cur">En curso</span></div>
+            <div class="dir">Av. Juárez 226 · Col. Centro</div>
+            <div class="prog"><i style="width:60%"></i></div>
+            <div class="dir">6 de 10 preguntas</div>
+          </div>
+          <div class="tarjeta pend">
+            <div class="linea"><div class="pdv">Chedraui Selecto Ángel</div><span class="chip c-pen">Pendiente</span></div>
+            <div class="dir">Río Tíber 40 · Cuauhtémoc</div>
+          </div>
+          <div class="tarjeta hecha">
+            <div class="linea"><div class="pdv">Walmart Universidad</div><span class="chip c-ok">Completada</span></div>
+            <div class="dir">08:14 – 08:41 · 7 fotos</div>
+          </div>
+        </div>
+        <nav class="nav" aria-label="Navegación principal">
+          <div class="on"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/></svg>Ruta</div>
+          <div><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>Mapa</div>
+          <div><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.2-8.6"/><path d="m8 12 3 3 6-6"/></svg>Envíos</div>
+          <div><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg>Perfil</div>
+        </nav>
+      </div></div>
+      <p class="cap">01 · Itinerario<span>Estado de la jornada de un vistazo y aviso honesto de que no hay señal.</span></p>
+    </div>
+
+    <!-- 2. Check-in -->
+    <div class="unidad">
+      <div class="tel"><div class="pant">
+        <div class="barra"><span>9:14</span><span>Sin conexión</span></div>
+        <div class="appbar">
+          <div class="t">Registrar entrada</div>
+          <div class="s">Chedraui Selecto Ángel</div>
+        </div>
+        <div class="cuerpo">
+          <div class="mapa" role="img" aria-label="Mapa del punto de venta con radio de verificación de 150 metros">
+            <div class="via" style="left:0;right:0;top:52%;height:7px"></div>
+            <div class="via" style="top:0;bottom:0;left:34%;width:7px"></div>
+            <div class="halo"></div>
+            <div class="pin"></div>
+            <div class="geo">Estás a 38 m · precisión ±9 m</div>
+          </div>
+          <div class="tarjeta" style="border-left:4px solid var(--exito)">
+            <div class="linea">
+              <div class="pdv" style="font-size:12.5px">Ubicación verificada</div>
+              <span class="chip c-ok">Dentro del radio</span>
+            </div>
+            <div class="dir">Radio permitido: 150 m</div>
+          </div>
+          <label class="lb">Foto de fachada · obligatoria</label>
+          <div class="fotos" style="grid-template-columns:1fr 1fr">
+            <div class="foto"><b>09:13</b></div>
+            <div class="addfoto">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 8a2 2 0 0 1 2-2h2l1.5-2h7L17 6h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="3.5"/></svg>
+              Tomar otra
+            </div>
+          </div>
+          <button class="btn">Iniciar visita</button>
+        </div>
+      </div></div>
+      <p class="cap">02 · Check-in<span>El GPS valida contra el radio del PDV y deja constancia de la precisión.</span></p>
+    </div>
+
+    <!-- 3. Formulario -->
+    <div class="unidad">
+      <div class="tel"><div class="pant">
+        <div class="barra"><span>9:26</span><span>Sin conexión</span></div>
+        <div class="appbar">
+          <div class="t">Levantamiento</div>
+          <div class="s">Pregunta 6 de 10 · Oxxo Reforma 226</div>
+        </div>
+        <div class="cuerpo">
+          <div class="prog" style="margin-top:0"><i style="width:60%"></i></div>
+          <div class="tarjeta" style="margin:12px 0 9px">
+            <div class="sku">TAG Televia · Telepeaje</div>
+            <div class="preg">¿Hay producto en exhibición? <span class="req">*</span></div>
+            <div class="seg" style="margin-bottom:0">
+              <div class="on">Sí</div><div>No</div>
+            </div>
+          </div>
+          <div class="tarjeta" style="margin-bottom:9px">
+            <div class="sku">TAG Televia · Telepeaje</div>
+            <div class="preg">Precio en anaquel <span class="req">*</span></div>
+            <div class="campo foco" style="margin-bottom:6px"><strong style="font-variant-numeric:tabular-nums">$ 198.00</strong></div>
+            <div class="errmsg" style="margin:0">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+              Está 12% abajo del sugerido. Confirma el dato o toma foto de la etiqueta.
+            </div>
+          </div>
+          <div class="tarjeta">
+            <div class="sku">TAG Televia Moto</div>
+            <div class="preg">Piezas en exhibición</div>
+            <div class="campo" style="margin-bottom:0"><span class="ph">Escribe una cantidad</span></div>
+          </div>
+        </div>
+      </div></div>
+      <p class="cap">03 · Formulario dinámico<span>Preguntas ancladas a SKU. El error dice cómo corregir, no sólo qué falló.</span></p>
+    </div>
+
+    <!-- 4. Evidencia -->
+    <div class="unidad">
+      <div class="tel"><div class="pant">
+        <div class="barra"><span>9:31</span><span>Sin conexión</span></div>
+        <div class="appbar">
+          <div class="t">Evidencia</div>
+          <div class="s">3 de mínimo 2 fotos · Oxxo Reforma 226</div>
+        </div>
+        <div class="cuerpo">
+          <label class="lb">Anaquel y exhibición</label>
+          <div class="fotos">
+            <div class="foto"><b>09:28</b></div>
+            <div class="foto"><b>09:29</b></div>
+            <div class="foto"><b>09:30</b></div>
+          </div>
+          <div class="fotos" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:14px">
+            <div class="addfoto"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 8a2 2 0 0 1 2-2h2l1.5-2h7L17 6h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="3.5"/></svg>Agregar</div>
+          </div>
+          <div class="aviso" style="background:var(--azul-claro);border-color:#C6D3E0;color:var(--azul)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M12 16v-4M12 8h.01"/><circle cx="12" cy="12" r="10"/></svg>
+            <span>Las fotos se comprimen en el teléfono. Estas 3 pesan 620&nbsp;KB en total.</span>
+          </div>
+          <button class="btn">Cerrar visita</button>
+          <button class="btn sec" style="margin-top:8px">Guardar y continuar después</button>
+        </div>
+      </div></div>
+      <p class="cap">04 · Evidencia fotográfica<span>Compresión en dispositivo, visible para el promotor que paga sus datos.</span></p>
+    </div>
+
+    <!-- 5. Sincronización -->
+    <div class="unidad">
+      <div class="tel"><div class="pant">
+        <div class="barra"><span>13:47</span><span>Wi-Fi</span></div>
+        <div class="appbar">
+          <div class="t">Envíos</div>
+          <div class="s">Sincronizando 2 de 4 visitas</div>
+        </div>
+        <div class="cuerpo">
+          <div class="prog" style="margin-top:0"><i style="width:48%"></i></div>
+          <p class="dir" style="margin:4px 0 14px">Puedes seguir trabajando. El envío continúa solo.</p>
+          <div class="cola">
+            <div class="ic i-sube"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg></div>
+            <div class="tx"><div class="t1">Oxxo Reforma 226</div><div class="t2">Subiendo foto 2 de 3</div></div>
+          </div>
+          <div class="cola">
+            <div class="ic i-ok"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" aria-hidden="true"><path d="m5 13 4 4L19 7"/></svg></div>
+            <div class="tx"><div class="t1">Walmart Universidad</div><div class="t2">Enviada 13:46 · 7 fotos</div></div>
+          </div>
+          <div class="cola">
+            <div class="ic i-esp"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+            <div class="tx"><div class="t1">Chedraui Selecto Ángel</div><div class="t2">En espera de turno</div></div>
+          </div>
+          <div class="cola">
+            <div class="ic i-esp"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+            <div class="tx"><div class="t1">Soriana Coyoacán</div><div class="t2">En espera de turno</div></div>
+          </div>
+        </div>
+      </div></div>
+      <p class="cap">05 · Sincronización<span>La cola es visible: el promotor sabe qué se envió y qué falta.</span></p>
+    </div>
+
+  </div>
+</section>
+
+<section>
+  <h2 class="disp">Consola web — Panel de visitas</h2>
+  <p class="sub">Lo que ve supervisión. Datos densos, tabulares, con la evidencia a un clic. Cada usuario sólo ve los clientes que tiene asignados.</p>
+
+  <div class="pc">
+    <div class="crom"><i></i><i></i><i></i><div class="url">apatayana.mx/visitas</div></div>
+    <div class="app">
+      <aside class="side">
+        <div class="marca">Apatayana<em>Cliente: Televia</em></div>
+        <a href="#" class="on"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 3v18h18"/><path d="m7 14 4-4 3 3 5-6"/></svg>Panel de visitas</a>
+        <a href="#"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>Equipo en campo</a>
+        <div class="grp">Planeación</div>
+        <a href="#"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/></svg>Itinerarios</a>
+        <a href="#"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"/><path d="M9 13h6M9 17h4"/></svg>Formularios</a>
+        <div class="grp">Catálogo</div>
+        <a href="#"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 21V9l9-6 9 6v12"/><path d="M9 21v-7h6v7"/></svg>Puntos de venta</a>
+        <a href="#"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m21 8-9-5-9 5v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/></svg>Productos y SKU</a>
+        <a href="#"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2 21c0-3.6 3.1-5.5 7-5.5s7 1.9 7 5.5"/><path d="M17 11h5M19.5 8.5v5"/></svg>Usuarios</a>
+      </aside>
+      <div class="main">
+        <div class="tope">
+          <div>
+            <h3>Panel de visitas</h3>
+            <p>Lunes 14 de septiembre · 12 promotores activos</p>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="bsm gh">Filtros</button>
+            <button class="bsm">Exportar a Excel</button>
+          </div>
+        </div>
+        <div class="kpis">
+          <div class="k acc"><span>Cumplimiento</span><b>78%</b><i style="color:var(--exito)">+6 pts vs. semana pasada</i></div>
+          <div class="k"><span>Visitas del día</span><b>94</b><i style="color:var(--tinta-2)">de 120 programadas</i></div>
+          <div class="k"><span>Fuera de radio</span><b>3</b><i style="color:var(--alerta)">Requieren revisión</i></div>
+          <div class="k"><span>Sin sincronizar</span><b>7</b><i style="color:var(--tinta-2)">Promotores sin señal</i></div>
+        </div>
+        <div class="tblbox">
+          <table>
+            <caption class="sr" style="position:absolute;left:-9999px">Visitas registradas el día de hoy</caption>
+            <thead><tr>
+              <th>Punto de venta</th><th>Promotor</th><th>Entrada</th><th>Duración</th><th>Evidencia</th><th>Estado</th>
+            </tr></thead>
+            <tbody>
+              <tr>
+                <td><strong>Walmart Universidad</strong><br><span style="color:var(--tinta-2);font-size:11px">Benito Juárez</span></td>
+                <td>Luis Méndez</td><td class="num">08:14</td><td class="num">27 min</td>
+                <td><span class="mini"></span><span class="mini b"></span><span class="mini"></span><span style="font-size:11px;color:var(--tinta-2)">+4</span></td>
+                <td><span class="chip c-ok">Completada</span></td>
+              </tr>
+              <tr>
+                <td><strong>Oxxo Reforma 226</strong><br><span style="color:var(--tinta-2);font-size:11px">Cuauhtémoc</span></td>
+                <td>Luis Méndez</td><td class="num">09:13</td><td class="num">En curso</td>
+                <td><span class="mini"></span><span class="mini b"></span><span class="mini"></span></td>
+                <td><span class="chip c-cur">En curso</span></td>
+              </tr>
+              <tr>
+                <td><strong>Bodega Aurrera Tlalpan</strong><br><span style="color:var(--tinta-2);font-size:11px">Tlalpan</span></td>
+                <td>Ana Rivas</td><td class="num">08:52</td><td class="num">19 min</td>
+                <td><span class="mini"></span><span class="mini b"></span></td>
+                <td><span class="chip c-err">Fuera de radio · 410 m</span></td>
+              </tr>
+              <tr>
+                <td><strong>7-Eleven Insurgentes Sur</strong><br><span style="color:var(--tinta-2);font-size:11px">Benito Juárez</span></td>
+                <td>Ana Rivas</td><td class="num">10:05</td><td class="num">22 min</td>
+                <td><span class="mini b"></span><span class="mini"></span><span class="mini b"></span></td>
+                <td><span class="chip c-ok">Completada</span></td>
+              </tr>
+              <tr>
+                <td><strong>Soriana Coyoacán</strong><br><span style="color:var(--tinta-2);font-size:11px">Coyoacán</span></td>
+                <td>Jorge Salas</td><td class="num">—</td><td class="num">—</td>
+                <td><span style="font-size:11px;color:var(--tinta-2)">Sin enviar</span></td>
+                <td><span class="chip c-pen">Pendiente de sincronizar</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2 class="disp">Consola web — Constructor de formularios</h2>
+  <p class="sub">La pieza clave del sistema: Apatayana arma sus propios cuestionarios sin depender de desarrollo. Las preguntas se anclan a línea de producto o a SKU.</p>
+
+  <div class="pc">
+    <div class="crom"><i></i><i></i><i></i><div class="url">apatayana.mx/formularios/checklist-telepeaje</div></div>
+    <div class="app">
+      <aside class="side">
+        <div class="marca">Apatayana<em>Cliente: Televia</em></div>
+        <a href="#"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 3v18h18"/><path d="m7 14 4-4 3 3 5-6"/></svg>Panel de visitas</a>
+        <a href="#"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>Equipo en campo</a>
+        <div class="grp">Planeación</div>
+        <a href="#"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/></svg>Itinerarios</a>
+        <a href="#" class="on"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"/><path d="M9 13h6M9 17h4"/></svg>Formularios</a>
+        <div class="grp">Catálogo</div>
+        <a href="#"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 21V9l9-6 9 6v12"/><path d="M9 21v-7h6v7"/></svg>Puntos de venta</a>
+        <a href="#"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m21 8-9-5-9 5v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/></svg>Productos y SKU</a>
+      </aside>
+      <div class="main">
+        <div class="tope">
+          <div>
+            <h3>Checklist telepeaje</h3>
+            <p>Versión 3 · 10 preguntas · Asignado a 38 puntos de venta</p>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="bsm gh">Vista previa</button>
+            <button class="bsm">Publicar versión</button>
+          </div>
+        </div>
+        <div class="constr">
+          <div class="lienzo">
+            <div class="qitem">
+              <div class="drag"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg></div>
+              <div class="qt">
+                <div class="q1">¿La tienda está abierta y operando?</div>
+                <div class="q2">Sin producto asociado · Obligatoria</div>
+              </div>
+              <span class="tipo">Sí / No</span>
+            </div>
+            <div class="qitem sel">
+              <div class="drag"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg></div>
+              <div class="qt">
+                <div class="q1">Precio en anaquel</div>
+                <div class="q2">TAG Televia · Telepeaje · Obligatoria</div>
+              </div>
+              <span class="tipo">Precio SKU</span>
+            </div>
+            <div class="qitem">
+              <div class="drag"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg></div>
+              <div class="qt">
+                <div class="q1">¿Hay producto en exhibición?</div>
+                <div class="q2">TAG Televia · Telepeaje · Obligatoria</div>
+              </div>
+              <span class="tipo">Existencia</span>
+            </div>
+            <div class="qitem">
+              <div class="drag"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg></div>
+              <div class="qt">
+                <div class="q1">Foto del anaquel completo</div>
+                <div class="q2">Mínimo 2 fotos · Obligatoria</div>
+              </div>
+              <span class="tipo">Foto</span>
+            </div>
+            <div class="qitem">
+              <div class="drag"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg></div>
+              <div class="qt">
+                <div class="q1">Observaciones del promotor</div>
+                <div class="q2">Sin producto asociado · Opcional</div>
+              </div>
+              <span class="tipo">Texto</span>
+            </div>
+            <div class="addq">+ Agregar pregunta</div>
+          </div>
+          <div class="props">
+            <h4>Propiedades</h4>
+            <label class="lb">Texto de la pregunta</label>
+            <div class="pcampo">Precio en anaquel</div>
+            <label class="lb">Tipo</label>
+            <div class="pcampo">Precio por SKU</div>
+            <label class="lb">Producto asociado</label>
+            <div class="pcampo">TAG Televia</div>
+            <div class="sw"><span>Respuesta obligatoria</span><i></i></div>
+            <div class="sw"><span>Alertar si varía &gt;10%</span><i></i></div>
+            <label class="lb">Precio sugerido</label>
+            <div class="pcampo" style="font-variant-numeric:tabular-nums">$ 225.00 MXN</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="notas">
+  <h4>Notas sobre esta propuesta</h4>
+  <ul>
+    <li><strong>Los datos son de muestra.</strong> Nombres de promotores, precios y cifras se usan para ilustrar la interfaz; no provienen de la operación real de Apatayana.</li>
+    <li><strong>El alcance mostrado corresponde a la Fase 1.</strong> No aparecen reconocimiento de imágenes, tableros de BI, planogramas ni constructor de reportes configurables, que están fuera de la primera entrega.</li>
+    <li><strong>La interfaz final puede variar</strong> en función de las respuestas al cuestionario de levantamiento, especialmente en tipos de pregunta y estructura de reportes.</li>
+    <li><strong>La identidad visual es provisional.</strong> Si Apatayana cuenta con manual de marca, la paleta y tipografía se ajustan a ese manual.</li>
+  </ul>
+</div>
+
+<p class="pie">Propuesta visual · Plataforma de trade marketing para Apatayana Agencia de Mkt · Fase 1</p>
+
+</div>
+</body>
+</html>
