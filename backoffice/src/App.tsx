@@ -1,0 +1,35 @@
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { ProveedorSesion, useSesion } from './lib/sesion'
+import Layout from './componentes/Layout'
+import Login from './paginas/Login'
+import Panel from './paginas/Panel'
+import Pdvs from './paginas/Pdvs'
+import Pendiente from './paginas/Pendiente'
+
+function Rutas() {
+  const { sesion, cargando } = useSesion()
+
+  if (cargando) {
+    return <div className="login"><p style={{ color: 'var(--tinta-2)' }}>Cargando…</p></div>
+  }
+  if (!sesion) return <Login />
+
+  return (
+    <Routes>
+      <Route element={<Layout />}>
+        <Route index element={<Panel />} />
+        <Route path="pdvs" element={<Pdvs />} />
+        <Route path="catalogo" element={<Pendiente titulo="Catálogo" />} />
+        <Route path="usuarios" element={<Pendiente titulo="Usuarios" />} />
+      </Route>
+    </Routes>
+  )
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <ProveedorSesion><Rutas /></ProveedorSesion>
+    </BrowserRouter>
+  )
+}

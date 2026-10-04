@@ -17,3 +17,8 @@ build/
 *.log
 .vscode/
 .idea/
+
+# Vite
+backoffice/node_modules/
+backoffice/dist/
+backoffice/.env.local
