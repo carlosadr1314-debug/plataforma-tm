@@ -18,3 +18,13 @@ export const IcoGente = () => (
 export const IcoPanel = () => (
   <svg {...base}><path d="M3 3v18h18" /><path d="m7 14 4-4 3 3 5-6" /></svg>
 )
+
+export const IcoForm = () => (
+  <svg {...base}><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z" />
+    <path d="M14 2v5h5M9 13h6M9 17h4" /></svg>
+)
+
+export const IcoRuta = () => (
+  <svg {...base}><rect x="3" y="5" width="18" height="16" rx="2" />
+    <path d="M8 3v4M16 3v4M3 11h18M8 15h3" /></svg>
+)
