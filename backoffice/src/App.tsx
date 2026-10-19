@@ -33,7 +33,7 @@ function Rutas() {
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
       <ProveedorSesion><Rutas /></ProveedorSesion>
     </BrowserRouter>
   )
