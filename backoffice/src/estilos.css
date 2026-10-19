@@ -241,3 +241,16 @@ tr:last-child td{border-bottom:0}
 .copiar button.gh{background:transparent;color:var(--azul);border:1.5px solid var(--borde)}
 
 .tareas{margin-top:34px;padding-top:26px;border-top:1px solid var(--borde)}
+
+/* ---------- usuarios ---------- */
+.marca-raiz{font-size:9.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+  background:var(--azul-claro);color:var(--azul);padding:2px 7px;border-radius:10px;margin-left:7px}
+.lista-chk{list-style:none;margin:0 0 14px;padding:0;border:1px solid var(--borde);
+  border-radius:8px;max-height:190px;overflow-y:auto}
+.lista-chk li{border-bottom:1px solid #EFEDE9}
+.lista-chk li:last-child{border-bottom:0}
+.lista-chk label{display:flex;align-items:center;gap:10px;padding:10px 12px;
+  min-height:44px;font-size:13.5px;cursor:pointer;margin:0;text-transform:none;
+  letter-spacing:0;color:var(--tinta);font-weight:400}
+.lista-chk input{width:17px;height:17px;flex:none;accent-color:var(--azul);margin:0}
+.nota-panel{font-size:12.5px;color:var(--tinta-2);line-height:1.5;margin:-6px 0 14px}

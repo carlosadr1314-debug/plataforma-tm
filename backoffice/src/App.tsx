@@ -8,7 +8,7 @@ import Catalogo from './paginas/Catalogo'
 import Formularios from './paginas/Formularios'
 import FormularioEditor from './paginas/FormularioEditor'
 import Itinerarios from './paginas/Itinerarios'
-import Pendiente from './paginas/Pendiente'
+import Usuarios from './paginas/Usuarios'
 
 function Rutas() {
   const { sesion, cargando } = useSesion()
@@ -25,7 +25,7 @@ function Rutas() {
         <Route path="formularios" element={<Formularios />} />
         <Route path="formularios/:id" element={<FormularioEditor />} />
         <Route path="itinerarios" element={<Itinerarios />} />
-        <Route path="usuarios" element={<Pendiente titulo="Usuarios" />} />
+        <Route path="usuarios" element={<Usuarios />} />
       </Route>
     </Routes>
   )
