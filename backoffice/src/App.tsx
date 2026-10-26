@@ -9,6 +9,7 @@ import Formularios from './paginas/Formularios'
 import FormularioEditor from './paginas/FormularioEditor'
 import Itinerarios from './paginas/Itinerarios'
 import Usuarios from './paginas/Usuarios'
+import Visitas from './paginas/Visitas'
 
 function Rutas() {
   const { sesion, cargando } = useSesion()
@@ -20,6 +21,7 @@ function Rutas() {
     <Routes>
       <Route element={<Layout />}>
         <Route index element={<Panel />} />
+        <Route path="visitas" element={<Visitas />} />
         <Route path="pdvs" element={<Pdvs />} />
         <Route path="catalogo" element={<Catalogo />} />
         <Route path="formularios" element={<Formularios />} />

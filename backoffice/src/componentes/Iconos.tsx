@@ -28,3 +28,8 @@ export const IcoRuta = () => (
   <svg {...base}><rect x="3" y="5" width="18" height="16" rx="2" />
     <path d="M8 3v4M16 3v4M3 11h18M8 15h3" /></svg>
 )
+
+export const IcoVisitas = () => (
+  <svg {...base}><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0z" />
+    <circle cx="12" cy="10" r="3" /></svg>
+)
