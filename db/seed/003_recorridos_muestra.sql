@@ -52,7 +52,10 @@ declare
   v_minuto     int;
   v_total_min  int;
   v_bateria    smallint;
+  v_bat0       smallint;
   v_vel        real;
+  v_rezago     int;
+  v_parado     int;
 
   -- 45 puntos en movimiento y 15 detenido en cada tienda
   k_andando    constant int := 45;
@@ -90,12 +93,26 @@ begin
     v_ruta := v_rutas -> (v_i % v_n_rutas);
     v_i    := v_i + 1;
 
-    v_tramos    := jsonb_array_length(v_ruta) - 1;
-    v_total_min := v_tramos * (k_andando + k_parado);
+    -- Unos cubren tres paradas y otros dos: asi las horas de inicio y
+    -- el numero de puntos no salen calcados entre promotores.
+    v_tramos := least(jsonb_array_length(v_ruta) - 1, 2 + (v_i % 2));
 
-    -- La jornada arranco hace tantos minutos como dura el recorrido,
-    -- para que el ultimo punto quede en "ahora".
-    v_inicio := now() - (v_total_min || ' minutes')::interval;
+    -- Cuanto se queda en cada tienda. Varia por promotor para que las
+    -- horas de inicio no salgan todas iguales.
+    v_parado := k_parado + (v_i * 5) % 13;
+
+    v_total_min := v_tramos * (k_andando + v_parado);
+
+    -- Minutos que lleva sin reportar. La mayoria al corriente, uno
+    -- con un hueco corto y otro con uno largo, para que en el mapa
+    -- se vean los tres estados y no todo en verde.
+    v_rezago := case v_i % 5 when 2 then 8 when 4 then 78 else 0 end;
+
+    -- Bateria con la que empezo la jornada: ni todos al 94.
+    v_bat0 := (87 + (v_i * 7) % 12)::smallint;
+
+    -- El ultimo punto queda "hace v_rezago minutos".
+    v_inicio := now() - ((v_total_min + v_rezago) || ' minutes')::interval;
 
     insert into jornada (organizacion_id, usuario_id, fecha, inicio)
     values (v_org, v_prom.id,
@@ -128,7 +145,7 @@ begin
 
         v_minuto  := v_minuto + 1;
         v_momento := v_inicio + (v_minuto || ' minutes')::interval;
-        v_bateria := greatest(20, 94 - (v_minuto * 3 / 60))::smallint;  -- ~3% por hora
+        v_bateria := greatest(12, v_bat0 - (v_minuto * 3 / 60))::smallint;  -- ~3% por hora
         v_vel     := (16 + random() * 26)::real;
 
         insert into ubicacion (
@@ -144,10 +161,10 @@ begin
       end loop;
 
       -- ---- detenido en la tienda ----
-      for v_paso in 1 .. k_parado loop
+      for v_paso in 1 .. v_parado loop
         v_minuto  := v_minuto + 1;
         v_momento := v_inicio + (v_minuto || ' minutes')::interval;
-        v_bateria := greatest(20, 94 - (v_minuto * 3 / 60))::smallint;
+        v_bateria := greatest(12, v_bat0 - (v_minuto * 3 / 60))::smallint;
 
         insert into ubicacion (
           jornada_id, usuario_id, organizacion_id,
@@ -180,8 +197,8 @@ select u.nombre,
        count(p.id)                                        as puntos,
        max(p.bateria)                                     as bateria_inicial,
        min(p.bateria)                                     as bateria_actual,
-       round(extract(epoch from (now() - max(p.capturada_en)))::numeric, 0)
-                                                          as seg_sin_reportar
+       round(extract(epoch from (now() - max(p.capturada_en)))::numeric / 60, 0)
+                                                          as min_sin_reportar
   from jornada j
   join usuario u  on u.id = j.usuario_id
   left join ubicacion p on p.jornada_id = j.id
