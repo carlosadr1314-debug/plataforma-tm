@@ -6,6 +6,7 @@ import { IcoPanel, IcoTienda, IcoCaja, IcoGente, IcoForm, IcoRuta, IcoVisitas } 
 export default function Layout() {
   const { perfil } = useSesion()
   const clase = ({ isActive }: { isActive: boolean }) => (isActive ? 'on' : '')
+  const subclase = ({ isActive }: { isActive: boolean }) => 'sub' + (isActive ? ' on' : '')
 
   return (
     <div className="app">
@@ -16,7 +17,8 @@ export default function Layout() {
         </div>
         <nav aria-label="Navegación principal">
           <NavLink to="/" end className={clase}><IcoPanel /> Panel</NavLink>
-          <NavLink to="/visitas" className={clase}><IcoVisitas /> Visitas</NavLink>
+          <NavLink to="/visitas" end className={clase}><IcoVisitas /> Visitas</NavLink>
+          <NavLink to="/visitas/seguimiento" className={subclase}>Seguimiento en vivo</NavLink>
           <NavLink to="/pdvs" className={clase}><IcoTienda /> Puntos de venta</NavLink>
           <NavLink to="/catalogo" className={clase}><IcoCaja /> Catálogo</NavLink>
           <NavLink to="/formularios" className={clase}><IcoForm /> Formularios</NavLink>

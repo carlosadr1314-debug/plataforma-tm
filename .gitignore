@@ -22,3 +22,9 @@ build/
 backoffice/node_modules/
 backoffice/dist/
 backoffice/.env.local
+
+# Aplicacion movil
+app/node_modules/
+app/.expo/
+app/dist/
+app/.env

@@ -10,6 +10,7 @@ import FormularioEditor from './paginas/FormularioEditor'
 import Itinerarios from './paginas/Itinerarios'
 import Usuarios from './paginas/Usuarios'
 import Visitas from './paginas/Visitas'
+import Mapa from './paginas/Mapa'
 
 function Rutas() {
   const { sesion, cargando } = useSesion()
@@ -28,6 +29,7 @@ function Rutas() {
         <Route path="formularios/:id" element={<FormularioEditor />} />
         <Route path="itinerarios" element={<Itinerarios />} />
         <Route path="usuarios" element={<Usuarios />} />
+        <Route path="visitas/seguimiento" element={<Mapa />} />
       </Route>
     </Routes>
   )
