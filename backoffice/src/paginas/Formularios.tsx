@@ -26,6 +26,39 @@ export default function Formularios() {
   const [error, setError] = useState('')
   const [guardando, setGuardando] = useState(false)
 
+  // Clonar una plantilla: hasta ahora se podia marcar un formulario
+  // como plantilla pero no habia forma de usarla, que es para lo
+  // unico que sirve serlo.
+  const [clonando, setClonando] = useState<null | { id: string; nombre: string }>(null)
+  const [destino, setDestino] = useState({ cliente: '', nombre: '' })
+  const [copiando, setCopiando] = useState(false)
+
+  function abrirClonado(f: { id: string; nombre: string }) {
+    setError('')
+    setClonando(f)
+    setDestino({ cliente: clientes[0]?.id ?? '', nombre: f.nombre })
+  }
+
+  async function clonar(e: FormEvent) {
+    e.preventDefault()
+    setError('')
+    if (!clonando) return
+    if (!destino.cliente) { setError('Elige para qué cliente es.'); return }
+    if (!destino.nombre.trim()) { setError('Ponle un nombre al formulario.'); return }
+
+    setCopiando(true)
+    const { data, error: err } = await supabase.rpc('clonar_formulario', {
+      p_origen: clonando.id,
+      p_cliente: destino.cliente,
+      p_nombre: destino.nombre.trim(),
+    })
+    setCopiando(false)
+    if (err) { setError('No se pudo copiar. ' + err.message); return }
+    setClonando(null)
+    // Se abre de una vez para recortar lo que no aplique.
+    ir(`/formularios/${data}`)
+  }
+
   async function cargar() {
     setCargando(true)
     const { data } = await supabase.from('formulario')
@@ -112,7 +145,13 @@ export default function Formularios() {
                     <td>{f.activo
                       ? <span className="chip c-ok">ACTIVO</span>
                       : <span className="chip c-pen">INACTIVO</span>}</td>
-                    <td style={{ textAlign: 'right' }}>
+                    <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      {editable && f.es_plantilla && (
+                        <button className="btn" style={{ minHeight: 38, fontSize: 14, marginRight: 6 }}
+                          onClick={() => abrirClonado(f)}>
+                          Usar plantilla
+                        </button>
+                      )}
                       <button className="btn sec" style={{ minHeight: 38, fontSize: 14 }}
                         onClick={() => ir(`/formularios/${f.id}`)}>
                         {editable ? 'Editar' : 'Ver'}
@@ -124,6 +163,53 @@ export default function Formularios() {
             </table>
           )}
       </div>
+
+      {clonando && (
+        <>
+          <div className="velo" onClick={() => setClonando(null)} />
+          <div className="panel" role="dialog" aria-modal="true" aria-label="Usar plantilla">
+            <h3>Usar plantilla</h3>
+            {error && <div className="aviso error" role="alert">{error}</div>}
+            <form onSubmit={clonar} noValidate>
+              <p className="nota-panel" style={{ marginTop: 0 }}>
+                Se copia <strong>{clonando.nombre}</strong> completa —preguntas,
+                opciones y condiciones— para el cliente que elijas. La plantilla
+                original no se toca.
+              </p>
+
+              <div className="campo">
+                <label htmlFor="cl-dest">Cliente</label>
+                <select id="cl-dest" value={destino.cliente}
+                        onChange={ev => setDestino({ ...destino, cliente: ev.target.value })}>
+                  <option value="">Elige un cliente</option>
+                  {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                </select>
+              </div>
+
+              <div className="campo">
+                <label htmlFor="nom-dest">Nombre del formulario</label>
+                <input id="nom-dest" value={destino.nombre}
+                       onChange={ev => setDestino({ ...destino, nombre: ev.target.value })} />
+              </div>
+
+              <p className="nota-panel">
+                Al guardar se abre para que recortes lo que no aplique. La
+                plantilla trae veinticinco preguntas a propósito: está pensada
+                para quitarle, no para usarse entera.
+              </p>
+
+              <div className="dos" style={{ marginTop: 6 }}>
+                <button type="button" className="btn sec" onClick={() => setClonando(null)}>
+                  Cancelar
+                </button>
+                <button className="btn" disabled={copiando}>
+                  {copiando ? 'Copiando…' : 'Crear formulario'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </>
+      )}
 
       {abierto && (
         <>
