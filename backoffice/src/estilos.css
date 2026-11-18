@@ -354,3 +354,118 @@ tr.clic.on td{background:var(--azul-claro)}
   .seg-lienzo{order:1; height:58vh; min-height:0}
   .seg-lista{order:2; max-height:none}
 }
+
+/* ===================== panel de plataforma ===================== */
+.plat{min-height:100%;display:flex;flex-direction:column;background:var(--arena)}
+.plat-barra{
+  display:flex;align-items:center;justify-content:space-between;gap:16px;
+  background:var(--azul);color:#fff;padding:14px 26px;
+  padding-top:calc(14px + env(safe-area-inset-top,0px));
+}
+.plat-marca{font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;
+  font-size:20px;font-weight:600;line-height:1.1}
+.plat-marca em{display:block;font-style:normal;font-family:'Inter',sans-serif;
+  text-transform:none;font-size:11px;font-weight:400;opacity:.78;margin-top:2px}
+.plat-barra .btn.sec{background:transparent;color:#fff;border-color:rgba(255,255,255,.4)}
+.plat-barra .btn.sec:hover{background:rgba(255,255,255,.1)}
+
+.plat-cuerpo{flex:1;padding:22px 26px 60px;max-width:1040px;width:100%;margin:0 auto}
+.plat-codigo{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;
+  background:var(--azul-claro);color:var(--azul);padding:2px 7px;border-radius:5px}
+.plat-nota{font-size:12.5px;color:var(--tinta-2);margin:10px 2px 0;line-height:1.5}
+.plat-ayuda{display:block;font-size:12px;color:var(--tinta-2);margin-top:4px;line-height:1.45}
+.plat-sumar{display:flex;gap:10px;align-items:flex-end;margin-top:14px;flex-wrap:wrap}
+.der{text-align:right}
+
+/* ---------- catalogo: edicion y registros inactivos ---------- */
+.tope-dcha{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap}
+
+.chk{display:inline-flex;align-items:center;gap:8px;font-size:13px;
+  color:var(--tinta-2);cursor:pointer;min-height:36px;white-space:nowrap}
+.chk input{width:16px;height:16px;flex:none;accent-color:var(--azul);cursor:pointer;margin:0}
+
+/* El renglon lleva el borde y el resaltado; los botones de adentro no.
+   Dos razones: ".col li button" les impone ancho completo y los
+   encimaria, y si el resaltado fuera solo del nombre, "Editar"
+   quedaria sobre fondo blanco y la fila se veria partida en dos. */
+.col li .fila-cat{display:flex;align-items:center;border-bottom:1px solid #EFEDE9}
+.col li .fila-cat.on{background:var(--azul-claro);box-shadow:inset 3px 0 0 var(--naranja)}
+.col li .fila-cat.on > button.nombre{background:none;box-shadow:none;font-weight:600}
+.col li:last-child .fila-cat{border-bottom:0}
+.col li .fila-cat > button{border-bottom:0}
+.col li .fila-cat > button.nombre{flex:1;width:auto;min-width:0}
+.col li .fila-cat > button.ed{
+  flex:none;width:auto;min-height:32px;padding:0 10px;margin-right:8px;
+  border-radius:7px;background:none;color:var(--azul);
+  font-size:11.5px;font-weight:600;justify-content:center;
+}
+.col li .fila-cat > button.ed:hover{background:var(--azul-claro)}
+
+/* La regla global "table{min-width:620px}" esta pensada para los
+   listados de ancho completo. La tabla de SKUs vive dentro de una
+   columna de unos 500px, asi que ahi la desborda: llevaba saliendose
+   desde antes, solo que con cuatro columnas el contenido alcanzaba a
+   caber en lo visible y no se notaba. */
+.skus{min-width:0}
+.cols{grid-template-columns:1fr 1fr 2fr}
+.skus th,.skus td{padding:9px 10px}
+.skus .col-ed{width:40px;padding-left:0;padding-right:8px}
+.skus .ed{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:32px;height:32px;border:0;border-radius:7px;
+  background:none;color:var(--azul);cursor:pointer;padding:0;
+}
+.skus .ed:hover{background:var(--azul-claro)}
+.skus .ed svg{display:block}
+
+/* Los inactivos se distinguen por la etiqueta y por un tono de tinta
+   mas suave, no por transparencia: a 55% de opacidad el texto cae a
+   2.2:1 de contraste. Este gris da 5.7:1 y la etiqueta 6.0:1. */
+.col li.inactiva .fila-cat > button.nombre,
+.skus tr.inactiva td{color:var(--tinta-2)}
+.col li.inactiva em,.marca-inactivo{
+  font-style:normal;font-size:10px;font-weight:700;letter-spacing:.04em;
+  text-transform:uppercase;color:#5A554F;
+  background:#EAE7E2;border-radius:9px;padding:2px 6px;white-space:nowrap;
+}
+
+/* En columnas angostas el campo de alta no cabe junto a los botones. */
+.nuevo{flex-wrap:wrap}
+.nuevo input{flex:1 1 100%}
+.nuevo > button{flex:1}
+.nuevo > button.x{flex:0 0 44px}
+
+/* ---------- alta de usuarios ---------- */
+.opciones{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+.opciones button{
+  flex:1;min-width:110px;min-height:38px;padding:0 10px;cursor:pointer;
+  border:1.5px solid var(--borde);border-radius:9px;background:var(--superficie);
+  font:inherit;font-size:12.5px;font-weight:600;color:var(--tinta-2);
+}
+.opciones button.on{border-color:var(--azul);background:var(--azul-claro);color:var(--azul)}
+
+.con-boton{display:flex;gap:7px;align-items:stretch}
+.con-boton input{flex:1;min-width:0}
+.con-boton .btn{flex:none;min-height:44px}
+
+.credenciales{list-style:none;margin:0 0 4px;padding:0;
+  border:1px solid var(--borde);border-radius:var(--r);overflow:hidden}
+.credenciales li{display:flex;justify-content:space-between;align-items:center;gap:12px;
+  padding:10px 13px;border-bottom:1px solid #EFEDE9}
+.credenciales li:last-child{border-bottom:0}
+.credenciales span{font-size:12px;color:var(--tinta-2)}
+.credenciales code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:15px;font-weight:600;color:var(--tinta);letter-spacing:.04em}
+.plat-correo{font-size:12px;color:var(--tinta-2)}
+.enlace-caja{
+  width:100%;resize:vertical;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:11.5px;line-height:1.5;padding:10px 12px;color:var(--tinta);
+  border:1px solid var(--borde);border-radius:9px;background:var(--arena);
+}
+.acceso-bloque{
+  background:var(--arena);border:1px solid var(--borde);border-radius:var(--r);
+  padding:12px 14px;margin-bottom:18px;
+}
+.acceso-bloque .con-boton{margin-top:4px}
+.acceso-bloque code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-weight:600;color:var(--tinta)}
