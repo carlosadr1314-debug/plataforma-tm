@@ -16,13 +16,24 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-font"
+      "expo-font",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Plataforma TM usa tu ubicación mientras tienes la jornada abierta, para que tu supervisor sepa por dónde vas en la ruta.",
+          "locationWhenInUsePermission": "Plataforma TM usa tu ubicación mientras tienes la jornada abierta, para que tu supervisor sepa por dónde vas en la ruta."
+        }
+      ]
     ]
   }
 }

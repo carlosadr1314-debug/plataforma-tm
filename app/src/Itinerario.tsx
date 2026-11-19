@@ -5,6 +5,7 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { supabase } from './supabase'
+import BarraJornada from './BarraJornada'
 import { c, f, TOCABLE, SEPARACION, CIFRAS } from './tema'
 
 type Parada = {
@@ -110,6 +111,10 @@ export default function Itinerario() {
         }
         ListHeaderComponent={
           <>
+            {/* La jornada va antes que la ruta: es lo primero que hace
+                en la manana y lo ultimo en la tarde. */}
+            <BarraJornada />
+
             {error !== '' && (
               <View style={s.aviso} accessibilityLiveRegion="polite">
                 <Text style={s.avisoTexto}>{error}</Text>
