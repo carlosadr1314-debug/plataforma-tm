@@ -55,15 +55,18 @@ export default function Formulario({ itinerarioId, formularioId, clienteId, onCe
         setRespuestas(r)
       }
 
-      const fresco = await bajarFormulario(formularioId, clienteId).catch(() => null)
-      if (vivo && fresco) setDatos(fresco)
-      if (vivo) {
-        if (!guardado && !fresco) {
-          setError('No se pudo cargar el formulario y no hay una copia en el ' +
-            'teléfono. Busca señal y vuelve a entrar.')
-        }
-        setCargando(false)
+      const r = await bajarFormulario(formularioId, clienteId)
+        .catch(e => ({ datos: null, error: String(e?.message ?? e) }))
+      if (!vivo) return
+      if (r.datos) setDatos(r.datos)
+      if (!guardado && !r.datos) {
+        // El mensaje del servidor va tal cual: un "no se pudo" a secas
+        // obliga a adivinar, y adivinar cuesta un viaje a la tienda.
+        setError('No se pudo cargar el formulario y no hay una copia en el ' +
+          'teléfono. Busca señal y vuelve a entrar.' +
+          (r.error ? `\n\nEl servidor dice: ${r.error}` : ''))
       }
+      setCargando(false)
     })()
     return () => { vivo = false }
   }, [formularioId, clienteId, itinerarioId])

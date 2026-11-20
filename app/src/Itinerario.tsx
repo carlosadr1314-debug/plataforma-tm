@@ -103,7 +103,7 @@ export default function Itinerario() {
         if (p.tarea?.formulario_id && p.cliente_id)
           porBajar.set(p.tarea.formulario_id, p.cliente_id)
       })
-      porBajar.forEach((cli, form) => { bajarFormulario(form, cli).catch(() => {}) })
+      porBajar.forEach((cli, form) => { void bajarFormulario(form, cli).catch(() => {}) })
     }
 
     // Lo que el promotor hizo sin señal se encima a lo que dice el

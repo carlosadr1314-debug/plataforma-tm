@@ -134,12 +134,12 @@ function guardarFormulario(id: string, datos: FormularioGuardado) {
  */
 export async function bajarFormulario(
   formularioId: string, clienteId: string,
-): Promise<FormularioGuardado | null> {
+): Promise<{ datos: FormularioGuardado | null; error: string | null }> {
   const [p, k] = await Promise.all([
     supabase.from('pregunta')
       .select(`id,orden,texto,tipo,obligatoria,config,
                opcion_pregunta(id,orden,texto),
-               condicion_pregunta(depende_de_id,operador,valor)`)
+               condicion_pregunta!pregunta_id(depende_de_id,operador,valor)`)
       .eq('formulario_id', formularioId).order('orden'),
     supabase.from('sku')
       .select('id,codigo,nombre,precio_sugerido,subproducto!inner(producto!inner(cliente_id))')
@@ -147,7 +147,13 @@ export async function bajarFormulario(
       .eq('activo', true).order('codigo'),
   ])
 
-  if (p.error || !p.data) return formularioGuardado(formularioId)
+  // condicion_pregunta apunta DOS veces a pregunta —pregunta_id y
+  // depende_de_id— asi que hay que decirle a PostgREST por cual de las
+  // dos se arma el anidado. Sin la pista contesta que la relacion es
+  // ambigua y no trae nada.
+  if (p.error || !p.data) {
+    return { datos: await formularioGuardado(formularioId), error: p.error?.message ?? null }
+  }
 
   const datos: FormularioGuardado = {
     preguntas: (p.data as any[]).map(q => ({
@@ -160,7 +166,7 @@ export async function bajarFormulario(
     })),
   }
   await guardarFormulario(formularioId, datos)
-  return datos
+  return { datos, error: k.error?.message ?? null }
 }
 
 // ---------------------------------------------------------------------
