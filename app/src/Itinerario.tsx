@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { supabase } from './supabase'
 import BarraJornada from './BarraJornada'
 import Visita, { type Parada as ParadaVisita } from './Visita'
-import { guardarRuta, rutaGuardada, pendientes, sincronizar } from './sinSenal'
+import { guardarRuta, rutaGuardada, pendientes, sincronizar, bajarFormulario } from './sinSenal'
 import { AppState } from 'react-native'
 import { c, f, TOCABLE, SEPARACION, CIFRAS } from './tema'
 
@@ -72,9 +72,9 @@ export default function Itinerario() {
     // El aislamiento lo hace la base: esta consulta no filtra por
     // usuario, las politicas de seguridad solo devuelven su ruta.
     const { data, error: err } = await supabase.from('itinerario')
-      .select(`id,hora_estimada,
+      .select(`id,hora_estimada,cliente_id,
                pdv:pdv_id(codigo,nombre,direccion,ciudad,lat,lng,radio_checkin),
-               tarea:tarea_id(nombre),
+               tarea:tarea_id(nombre,formulario_id),
                visita(id,estado,check_in,check_out,distancia_pdv,motivo_no_visita)`)
       .eq('fecha_programada', hoy)
       .order('hora_estimada')
@@ -94,6 +94,16 @@ export default function Itinerario() {
       ruta = data as any[]
       setDeGuardado(false)
       guardarRuta(hoy, ruta)
+
+      // Los formularios del dia se bajan aqui, de mañana y con señal.
+      // Adentro de la tienda ya no hay red, y un formulario que no se
+      // alcanzo a bajar deja al promotor parado sin poder capturar.
+      const porBajar = new Map<string, string>()
+      ruta.forEach((p: any) => {
+        if (p.tarea?.formulario_id && p.cliente_id)
+          porBajar.set(p.tarea.formulario_id, p.cliente_id)
+      })
+      porBajar.forEach((cli, form) => { bajarFormulario(form, cli).catch(() => {}) })
     }
 
     // Lo que el promotor hizo sin señal se encima a lo que dice el

@@ -5,7 +5,9 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import * as Location from 'expo-location'
-import { apuntar, sincronizar } from './sinSenal'
+import { apuntar, sincronizar, formularioGuardado, respuestasGuardadas } from './sinSenal'
+import { pendientes as faltantes } from './reglasFormulario'
+import Formulario from './Formulario'
 import { zonaDeCheckin, TOLERANCIA_M } from './radio'
 import { c, f, CIFRAS, TOCABLE } from './tema'
 
@@ -46,7 +48,8 @@ export type Parada = {
     codigo: string; nombre: string; direccion: string | null; ciudad: string | null
     lat: number | null; lng: number | null; radio_checkin: number
   } | null
-  tarea: { nombre: string } | null
+  cliente_id?: string | null
+  tarea: { nombre: string; formulario_id?: string | null } | null
   visita: any
 }
 
@@ -91,6 +94,8 @@ export default function Visita({ parada, onCerrar, onCambio }: {
   const [midiendo, setMidiendo] = useState(false)
   const [confirmar, setConfirmar] = useState<null | { metros: number; pos: Location.LocationObject }>(null)
   const [noRealizada, setNoRealizada] = useState(false)
+  const [enFormulario, setEnFormulario] = useState(false)
+  const [faltan, setFaltan] = useState<number | null>(null)
   const [motivo, setMotivo] = useState('')
 
   // Al abrir, medir a que distancia esta: es lo primero que uno quiere
@@ -117,6 +122,24 @@ export default function Visita({ parada, onCerrar, onCambio }: {
     })()
     return () => { vivo = false }
   }, [estado, pdv?.lat, pdv?.lng])
+
+  const formularioId = parada.tarea?.formulario_id ?? null
+
+  // Cuantas obligatorias faltan. Se recalcula al volver del
+  // formulario, que es cuando pudo haber cambiado.
+  useEffect(() => {
+    if (!formularioId || enFormulario) return
+    let vivo = true
+    ;(async () => {
+      const datos = await formularioGuardado(formularioId)
+      const previas = await respuestasGuardadas(parada.id)
+      if (!vivo || !datos) { if (vivo) setFaltan(null); return }
+      const r: Record<string, any> = {}
+      Object.entries(previas).forEach(([k, v]) => { r[k] = v.valor })
+      setFaltan(faltantes(datos.preguntas, r, datos.skus.map(k => k.id)).length)
+    })()
+    return () => { vivo = false }
+  }, [formularioId, enFormulario, parada.id])
 
   async function tomarPosicion() {
     const permiso = await Location.requestForegroundPermissionsAsync()
@@ -227,6 +250,17 @@ export default function Visita({ parada, onCerrar, onCambio }: {
   const cerca = zona === 'cerca'
   const bloqueado = zona === 'bloqueado'
 
+  if (enFormulario && formularioId && parada.cliente_id) {
+    return (
+      <Formulario
+        itinerarioId={parada.id}
+        formularioId={formularioId}
+        clienteId={parada.cliente_id}
+        onCerrar={() => setEnFormulario(false)}
+      />
+    )
+  }
+
   return (
     <SafeAreaView style={s.pantalla} edges={['top', 'bottom', 'left', 'right']}>
       <View style={s.barra}>
@@ -327,16 +361,39 @@ export default function Visita({ parada, onCerrar, onCambio }: {
               </Text>
             </View>
 
-            <View style={s.pendiente}>
-              <Text style={s.pendienteTitulo}>El formulario todavía no está aquí</Text>
-              <Text style={s.pendienteTexto}>
-                La captura de las preguntas es lo que sigue. Por ahora puedes
-                cerrar la visita y la oficina la verá como completada, pero sin
-                respuestas.
-              </Text>
-            </View>
+            {formularioId ? (
+              <Pressable
+                style={({ pressed }) => [s.form, pressed && { opacity: 0.85 }]}
+                onPress={() => setEnFormulario(true)}
+                accessibilityRole="button"
+                accessibilityLabel="Abrir el formulario de la visita">
+                <View style={{ flex: 1 }}>
+                  <Text style={s.formTitulo}>{parada.tarea?.nombre ?? 'Formulario'}</Text>
+                  <Text style={s.formTexto}>
+                    {faltan == null ? 'Tócalo para capturar.'
+                      : faltan === 0 ? 'Todas las obligatorias contestadas.'
+                      : `Faltan ${faltan} pregunta${faltan === 1 ? '' : 's'} obligatoria${faltan === 1 ? '' : 's'}.`}
+                  </Text>
+                </View>
+                <Text style={s.formFlecha}>›</Text>
+              </Pressable>
+            ) : (
+              <View style={s.pendiente}>
+                <Text style={s.pendienteTitulo}>Esta visita no trae formulario</Text>
+                <Text style={s.pendienteTexto}>
+                  La tarea que le asignaron no tiene uno. Puedes cerrarla igual.
+                </Text>
+              </View>
+            )}
 
-            <Boton texto="TERMINAR VISITA" onPress={terminar} ocupado={trabajando} />
+            {faltan != null && faltan > 0 && (
+              <Text style={s.candado}>
+                Para terminar la visita hay que contestar lo obligatorio.
+              </Text>
+            )}
+
+            <Boton texto="TERMINAR VISITA" onPress={terminar} ocupado={trabajando}
+                   apagado={faltan != null && faltan > 0} />
             <Pressable style={s.enlace} onPress={() => { setError(''); setNoRealizada(true) }}
                        accessibilityRole="button">
               <Text style={s.enlaceTexto}>Marcarla como no realizada</Text>
@@ -422,15 +479,16 @@ export default function Visita({ parada, onCerrar, onCambio }: {
   )
 }
 
-function Boton({ texto, onPress, ocupado }: {
-  texto: string; onPress: () => void; ocupado?: boolean
+function Boton({ texto, onPress, ocupado, apagado }: {
+  texto: string; onPress: () => void; ocupado?: boolean; apagado?: boolean
 }) {
   return (
     <Pressable
-      style={({ pressed }) => [s.boton, s.botonGrande, pressed && { opacity: 0.85 }]}
-      onPress={onPress} disabled={ocupado}
+      style={({ pressed }) => [s.boton, s.botonGrande, apagado && s.botonApagado,
+                               pressed && !apagado && { opacity: 0.85 }]}
+      onPress={onPress} disabled={ocupado || apagado}
       accessibilityRole="button" accessibilityLabel={texto}
-      accessibilityState={{ busy: !!ocupado }}>
+      accessibilityState={{ busy: !!ocupado, disabled: !!apagado }}>
       {ocupado ? <ActivityIndicator color={c.blanco} />
                : <Text style={s.botonTexto}>{texto}</Text>}
     </Pressable>
@@ -475,6 +533,18 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', flex: 1, paddingHorizontal: 14 },
   botonGrande: { minHeight: 58, marginTop: 6, flex: 0 },
   botonSec: { backgroundColor: c.blanco, borderWidth: 1.5, borderColor: c.azul },
+  // Apagado, no escondido: se ve que ahi esta y que falta algo.
+  botonApagado: { backgroundColor: c.neutroTexto },
+
+  form: { flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: c.blanco, borderRadius: 11, padding: 14,
+    borderWidth: 1.5, borderColor: c.azul },
+  formTitulo: { fontFamily: f.textoFuerte, fontSize: 15.5, color: c.azul },
+  formTexto: { fontFamily: f.texto, fontSize: 13, color: c.tinta2,
+    lineHeight: 18, marginTop: 2 },
+  formFlecha: { fontFamily: f.display, fontSize: 26, color: c.azul },
+  candado: { fontFamily: f.texto, fontSize: 12.5, color: c.naranjaTexto,
+    textAlign: 'center', lineHeight: 18 },
   botonTexto: { fontFamily: f.display, color: c.blanco, fontSize: 15.5, letterSpacing: .9 },
   botonTextoSec: { color: c.azul },
 

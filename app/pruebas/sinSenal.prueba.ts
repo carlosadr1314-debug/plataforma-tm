@@ -1,7 +1,8 @@
 // Prueba de la logica de trabajar sin señal. Corre con: npm run prueba
 // No necesita instalar nada: Node 22 ejecuta TypeScript por si mismo.
 
-import { apuntar, pendientes, sincronizar, guardarRuta, rutaGuardada } from '../src/sinSenal.ts'
+import { apuntar, pendientes, sincronizar, guardarRuta, rutaGuardada,
+         apuntarRespuestas, respuestasGuardadas } from '../src/sinSenal.ts'
 import { estado } from './dobles/supabase.mjs'
 
 let ok = 0, mal = 0
@@ -42,6 +43,32 @@ function afirmar(que: string, cierto: boolean) {
   estado.falla = { message: 'new row violates row-level security policy' }
   quedan = await sincronizar()
   afirmar('se suelta en vez de atorar la cola', quedan === 0)
+
+  console.log('--- las respuestas del formulario ---')
+  estado.falla = null
+  estado.respuestas.length = 0
+  await apuntarRespuestas('it-9', { p1: { tipo: 'booleano', valor: true } })
+  await apuntarRespuestas('it-9', { p2: { tipo: 'numero', valor: 28.5 } })
+  let rs = await respuestasGuardadas('it-9')
+  afirmar('se funden, no se pisan', Object.keys(rs).length === 2)
+
+  // Sin visita en el servidor no hay donde colgarlas: esperan.
+  quedan = await sincronizar()
+  afirmar('sin visita, las respuestas esperan', quedan === 1)
+  afirmar('y no se mando ninguna', estado.respuestas.length === 0)
+
+  // Con la llegada apuntada, la visita sale primero y las respuestas
+  // se cuelgan de su id.
+  await apuntar('it-9', { estado: 'en_curso', check_in: 'T9' })
+  quedan = await sincronizar()
+  afirmar('ya con llegada, todo sale', quedan === 0)
+  afirmar('se mandaron las dos respuestas', estado.respuestas.length === 2)
+  afirmar('colgadas de la visita correcta',
+          estado.respuestas.every(r => r.visita_id === 'v-it-9'))
+  afirmar('el booleano en su columna',
+          estado.respuestas.find(r => r.pregunta_id === 'p1')?.valor_bool === true)
+  afirmar('el numero en la suya',
+          estado.respuestas.find(r => r.pregunta_id === 'p2')?.valor_numero === 28.5)
 
   console.log('--- la ruta guardada es solo la de hoy ---')
   estado.falla = null

@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { supabase } from './supabase'
+import { filaDeRespuesta, type Pregunta, type Valor } from './reglasFormulario'
 
 // =====================================================================
 // Trabajar sin señal
@@ -29,9 +30,15 @@ import { supabase } from './supabase'
 
 const LLAVE_RUTA = 'tm.ruta'
 const LLAVE_PENDIENTES = 'tm.visitas.pendientes'
+const LLAVE_RESPUESTAS = 'tm.respuestas.pendientes'
+const LLAVE_FORMULARIOS = 'tm.formularios'
 
 export type CamposVisita = Record<string, unknown>
 export type Pendientes = Record<string, CamposVisita>
+
+/** Lo capturado de un formulario: pregunta -> tipo y valor. */
+export type RespuestaLocal = { tipo: Pregunta['tipo']; valor: Valor }
+export type RespuestasPorVisita = Record<string, Record<string, RespuestaLocal>>
 
 // AsyncStorage no es transaccional: la pantalla y el sincronizador
 // escriben en la misma llave y se pisarian.
@@ -92,32 +99,152 @@ export function apuntar(itinerarioId: string, campos: CamposVisita): Promise<Pen
   })
 }
 
+// ---------------------------------------------------------------------
+// Los formularios del dia
+//
+// Se bajan con la ruta, de manana y con señal, no al llegar a la
+// tienda. Adentro ya no hay red, y un formulario que no se pudo bajar
+// deja al promotor parado sin poder capturar nada.
+// ---------------------------------------------------------------------
+
+export type Sku = {
+  id: string; codigo: string; nombre: string; precio_sugerido: number | null
+}
+export type FormularioGuardado = { preguntas: Pregunta[]; skus: Sku[] }
+
+export function formularioGuardado(id: string) {
+  return enFila(async () => {
+    const f = await leerJson<Record<string, FormularioGuardado>>(LLAVE_FORMULARIOS, {})
+    return f[id] ?? null
+  })
+}
+
+function guardarFormulario(id: string, datos: FormularioGuardado) {
+  return enFila(async () => {
+    const f = await leerJson<Record<string, FormularioGuardado>>(LLAVE_FORMULARIOS, {})
+    f[id] = datos
+    await guardarJson(LLAVE_FORMULARIOS, f)
+  })
+}
+
+/**
+ * Baja un formulario con los SKU del cliente y lo deja guardado.
+ * Devuelve lo que haya: lo recien bajado, o lo guardado de antes si
+ * no hubo red.
+ */
+export async function bajarFormulario(
+  formularioId: string, clienteId: string,
+): Promise<FormularioGuardado | null> {
+  const [p, k] = await Promise.all([
+    supabase.from('pregunta')
+      .select(`id,orden,texto,tipo,obligatoria,config,
+               opcion_pregunta(id,orden,texto),
+               condicion_pregunta(depende_de_id,operador,valor)`)
+      .eq('formulario_id', formularioId).order('orden'),
+    supabase.from('sku')
+      .select('id,codigo,nombre,precio_sugerido,subproducto!inner(producto!inner(cliente_id))')
+      .eq('subproducto.producto.cliente_id', clienteId)
+      .eq('activo', true).order('codigo'),
+  ])
+
+  if (p.error || !p.data) return formularioGuardado(formularioId)
+
+  const datos: FormularioGuardado = {
+    preguntas: (p.data as any[]).map(q => ({
+      ...q,
+      opcion_pregunta: (q.opcion_pregunta ?? []).sort(
+        (a: any, b: any) => a.orden - b.orden),
+    })) as Pregunta[],
+    skus: ((k.data as any[]) ?? []).map(x => ({
+      id: x.id, codigo: x.codigo, nombre: x.nombre, precio_sugerido: x.precio_sugerido,
+    })),
+  }
+  await guardarFormulario(formularioId, datos)
+  return datos
+}
+
+// ---------------------------------------------------------------------
+// Las respuestas del formulario
+// ---------------------------------------------------------------------
+
+export function respuestasGuardadas(itinerarioId: string) {
+  return enFila(async () => {
+    const r = await leerJson<RespuestasPorVisita>(LLAVE_RESPUESTAS, {})
+    return r[itinerarioId] ?? {}
+  })
+}
+
+/**
+ * Apunta lo capturado. Se guarda en cada cambio, no al cerrar: si la
+ * aplicacion se muere a media auditoria de veinticinco preguntas, el
+ * promotor no las vuelve a teclear.
+ */
+export function apuntarRespuestas(
+  itinerarioId: string, nuevas: Record<string, RespuestaLocal>,
+) {
+  return enFila(async () => {
+    const r = await leerJson<RespuestasPorVisita>(LLAVE_RESPUESTAS, {})
+    r[itinerarioId] = { ...(r[itinerarioId] ?? {}), ...nuevas }
+    await guardarJson(LLAVE_RESPUESTAS, r)
+  })
+}
+
 /**
  * Intenta entregar lo pendiente. Devuelve cuantas visitas quedaron sin
  * salir: cero significa que todo llego.
  */
 export function sincronizar(): Promise<number> {
   return enFila(async () => {
-    const p = await leerJson<Pendientes>(LLAVE_PENDIENTES, {})
-    const llaves = Object.keys(p)
-    if (llaves.length === 0) return 0
+    const visitas = await leerJson<Pendientes>(LLAVE_PENDIENTES, {})
+    const respuestas = await leerJson<RespuestasPorVisita>(LLAVE_RESPUESTAS, {})
 
-    for (const k of llaves) {
-      const { error } = await supabase.from('visita')
-        .upsert({ ...p[k], sincronizada_en: new Date().toISOString() },
-                { onConflict: 'itinerario_id' })
+    const itinerarios = [...new Set([...Object.keys(visitas), ...Object.keys(respuestas)])]
+    if (itinerarios.length === 0) return 0
 
-      // Sin red: se corta y se reintenta despues, sin perder nada.
+    for (const k of itinerarios) {
+      // 1. La visita primero: las respuestas cuelgan de ella y sin
+      //    fila no hay a que colgarlas.
+      let visitaId: string | null = null
+
+      if (visitas[k]) {
+        const { data, error } = await supabase.from('visita')
+          .upsert({ ...visitas[k], sincronizada_en: new Date().toISOString() },
+                  { onConflict: 'itinerario_id' })
+          .select('id').single()
+        if (error && esDeRed(error)) break
+        if (error) { delete visitas[k]; delete respuestas[k]; continue }
+        visitaId = data?.id ?? null
+        delete visitas[k]
+      }
+
+      if (!respuestas[k]) continue
+
+      // 2. Si la visita ya estaba sincronizada de antes, hay que
+      //    preguntar su id: el telefono solo conoce el itinerario.
+      if (!visitaId) {
+        const { data, error } = await supabase.from('visita')
+          .select('id').eq('itinerario_id', k).maybeSingle()
+        if (error && esDeRed(error)) break
+        visitaId = data?.id ?? null
+        // Sin visita no hay donde poner las respuestas. Se quedan
+        // esperando a que la llegada salga.
+        if (!visitaId) continue
+      }
+
+      const filas = Object.entries(respuestas[k]).map(([preguntaId, r]) => ({
+        visita_id: visitaId,
+        ...filaDeRespuesta({ id: preguntaId, tipo: r.tipo } as Pregunta, r.valor),
+      }))
+
+      const { error } = await supabase.from('respuesta')
+        .upsert(filas, { onConflict: 'visita_id,pregunta_id' })
       if (error && esDeRed(error)) break
-
-      // Un error que no es de red —una visita borrada en la oficina,
-      // un permiso retirado— no se arregla reintentando. Se suelta
-      // para que lo demas pueda salir.
-      delete p[k]
+      delete respuestas[k]
     }
 
-    await guardarJson(LLAVE_PENDIENTES, p)
-    return Object.keys(p).length
+    await guardarJson(LLAVE_PENDIENTES, visitas)
+    await guardarJson(LLAVE_RESPUESTAS, respuestas)
+    return Object.keys(visitas).length + Object.keys(respuestas).length
   })
 }
 
