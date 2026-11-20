@@ -7,6 +7,8 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { supabase } from './supabase'
 import BarraJornada from './BarraJornada'
 import Visita, { type Parada as ParadaVisita } from './Visita'
+import { guardarRuta, rutaGuardada, pendientes, sincronizar } from './sinSenal'
+import { AppState } from 'react-native'
 import { c, f, TOCABLE, SEPARACION, CIFRAS } from './tema'
 
 type Parada = {
@@ -49,9 +51,17 @@ export default function Itinerario() {
   const [refrescando, setRefrescando] = useState(false)
   const [error, setError] = useState('')
   const [abierta, setAbierta] = useState<string | null>(null)
+  const [sinEnviar, setSinEnviar] = useState(0)
+  const [deGuardado, setDeGuardado] = useState(false)
 
   const cargar = useCallback(async () => {
     setError('')
+    const hoy = hoyLocal()
+
+    // Lo pendiente se intenta mandar antes de leer: si sale, lo que
+    // devuelva el servidor ya viene completo y no hay que encimarle nada.
+    const quedan = await sincronizar().catch(() => -1)
+
     const { data: u } = await supabase.auth.getUser()
     if (u.user) {
       const { data: perfil } = await supabase.from('usuario')
@@ -66,14 +76,46 @@ export default function Itinerario() {
                pdv:pdv_id(codigo,nombre,direccion,ciudad,lat,lng,radio_checkin),
                tarea:tarea_id(nombre),
                visita(id,estado,check_in,check_out,distancia_pdv,motivo_no_visita)`)
-      .eq('fecha_programada', hoyLocal())
+      .eq('fecha_programada', hoy)
       .order('hora_estimada')
 
-    if (err) setError('No se pudo cargar tu ruta. Revisa tu conexion y desliza hacia abajo para reintentar.')
-    setParadas((data as any) ?? [])
+    let ruta: any[] | null = null
+    if (err || !data) {
+      // Sin red: se trabaja con la ruta que quedo guardada. Si tampoco
+      // hay guardada, ahi si no hay nada que mostrar.
+      const g = await rutaGuardada(hoy)
+      ruta = g?.paradas as any[] ?? null
+      setDeGuardado(!!ruta)
+      setError(ruta
+        ? ''
+        : 'No se pudo cargar tu ruta y no hay una guardada en el teléfono. ' +
+          'Busca señal y desliza hacia abajo para reintentar.')
+    } else {
+      ruta = data as any[]
+      setDeGuardado(false)
+      guardarRuta(hoy, ruta)
+    }
+
+    // Lo que el promotor hizo sin señal se encima a lo que dice el
+    // servidor: en su pantalla la visita ya esta hecha, aunque alla
+    // todavia no haya llegado.
+    const pend = await pendientes()
+    setSinEnviar(Object.keys(pend).length)
+    setParadas((ruta ?? []).map(p => {
+      const extra = pend[p.id]
+      if (!extra) return p
+      return { ...p, visita: { ...(unaVisita(p.visita) ?? {}), ...extra } }
+    }))
+    if (quedan === 0) setSinEnviar(0)
   }, [])
 
   useEffect(() => { cargar().finally(() => setCargando(false)) }, [cargar])
+
+  // Volver a la aplicacion es la mejor señal de que puede haber red.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', e => { if (e === 'active') cargar() })
+    return () => sub.remove()
+  }, [cargar])
 
   async function refrescar() {
     setRefrescando(true)
@@ -103,7 +145,7 @@ export default function Itinerario() {
       <Visita
         parada={paradaAbierta as unknown as ParadaVisita}
         onCerrar={() => setAbierta(null)}
-        onCambio={() => { cargar(); setAbierta(null) }}
+        onCambio={volver => { cargar(); if (volver) setAbierta(null) }}
       />
     )
   }
@@ -129,6 +171,17 @@ export default function Itinerario() {
             {/* La jornada va antes que la ruta: es lo primero que hace
                 en la manana y lo ultimo en la tarde. */}
             <BarraJornada />
+
+            {(sinEnviar > 0 || deGuardado) && (
+              <View style={s.sinRed} accessibilityLiveRegion="polite">
+                <Text style={s.sinRedTexto}>
+                  {deGuardado && 'Sin señal: ésta es la ruta que quedó guardada en el teléfono. '}
+                  {sinEnviar > 0 && (sinEnviar === 1
+                    ? 'Tienes 1 visita sin enviar; sale sola en cuanto haya señal.'
+                    : `Tienes ${sinEnviar} visitas sin enviar; salen solas en cuanto haya señal.`)}
+                </Text>
+              </View>
+            )}
 
             {error !== '' && (
               <View style={s.aviso} accessibilityLiveRegion="polite">
@@ -254,6 +307,13 @@ const s = StyleSheet.create({
   vacioTitulo: { fontFamily: f.display, fontSize: 18, color: c.tinta, marginBottom: 8 },
   vacioTexto: { fontFamily: f.texto, fontSize: 14.5, color: c.tinta2,
     textAlign: 'center', lineHeight: 21 },
+
+  // Ni rojo ni alarmante: no es un error, es el estado normal de
+  // trabajar adentro de una tienda. Solo tiene que verse.
+  sinRed: { backgroundColor: c.naranjaSuave, borderWidth: 1, borderColor: '#F0C4AC',
+    borderRadius: 9, padding: 11, marginBottom: 12 },
+  sinRedTexto: { fontFamily: f.texto, fontSize: 13, color: c.naranjaTexto,
+    lineHeight: 18.5 },
 
   aviso: { backgroundColor: c.errorSuave, borderWidth: 1, borderColor: c.errorBorde,
     borderRadius: 9, padding: 12, marginBottom: 12 },

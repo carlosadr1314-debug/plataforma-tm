@@ -5,7 +5,7 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import * as Location from 'expo-location'
-import { supabase } from './supabase'
+import { apuntar, sincronizar } from './sinSenal'
 import { c, f, CIFRAS, TOCABLE } from './tema'
 
 // =====================================================================
@@ -62,7 +62,8 @@ function desfase(horaEstimada: string | null, llegada: Date) {
 export default function Visita({ parada, onCerrar, onCambio }: {
   parada: Parada
   onCerrar: () => void
-  onCambio: () => void
+  /** volver: si al terminar hay que regresar a la ruta o quedarse aqui. */
+  onCambio: (volver: boolean) => void
 }) {
   const visita = unaVisita(parada.visita)
   const estado: string = visita?.estado ?? 'programada'
@@ -138,9 +139,8 @@ export default function Visita({ parada, onCerrar, onCambio }: {
     setTrabajando(true)
 
     const ahora = new Date()
-    const fila = {
-      itinerario_id: parada.id,
-      estado: 'en_curso' as const,
+    await guardar({
+      estado: 'en_curso',
       check_in: ahora.toISOString(),
       check_in_lat: pos.coords.latitude,
       check_in_lng: pos.coords.longitude,
@@ -148,32 +148,23 @@ export default function Visita({ parada, onCerrar, onCambio }: {
       ubicacion_simulada: pos.mocked === true,
       distancia_pdv: metros,
       minutos_desfase: desfase(parada.hora_estimada, ahora),
-      sincronizada_en: ahora.toISOString(),
-    }
+    })
+  }
 
-    // itinerario_id es unico en visita, asi que el upsert sirve igual
-    // para la primera llegada que para un reintento.
-    const { error: err } = await supabase.from('visita')
-      .upsert(fila, { onConflict: 'itinerario_id' })
+  // Todo se escribe primero en el telefono y se manda despues. Al reves
+  // —mandar primero y esperar— el promotor se queda mirando una rueda
+  // girar adentro de una tienda sin señal, con el gerente esperandolo.
+  async function guardar(campos: Record<string, unknown>, volver = false) {
+    setTrabajando(true)
+    await apuntar(parada.id, campos)
+    sincronizar().catch(() => {})   // sin esperar: si hay red, sale sola
     setTrabajando(false)
-
-    if (err) {
-      setError('No se pudo registrar la llegada. Revisa que tengas señal ' +
-        'e inténtalo otra vez. Nada se perdió.')
-      return
-    }
-    onCambio()
+    onCambio(volver)
   }
 
   async function terminar() {
     setError('')
-    setTrabajando(true)
-    const { error: err } = await supabase.from('visita')
-      .update({ estado: 'completada', check_out: new Date().toISOString() })
-      .eq('itinerario_id', parada.id)
-    setTrabajando(false)
-    if (err) { setError('No se pudo cerrar la visita. Revisa tu señal.'); return }
-    onCambio()
+    await guardar({ estado: 'completada', check_out: new Date().toISOString() }, true)
   }
 
   async function marcarNoRealizada() {
@@ -182,20 +173,12 @@ export default function Visita({ parada, onCerrar, onCambio }: {
       return
     }
     setError('')
-    setTrabajando(true)
-    const ahora = new Date().toISOString()
-    const { error: err } = await supabase.from('visita')
-      .upsert({
-        itinerario_id: parada.id,
-        estado: 'no_realizada' as const,
-        motivo_no_visita: motivo.trim(),
-        check_out: ahora,
-        sincronizada_en: ahora,
-      }, { onConflict: 'itinerario_id' })
-    setTrabajando(false)
-    if (err) { setError('No se pudo guardar. Revisa tu señal.'); return }
     setNoRealizada(false)
-    onCambio()
+    await guardar({
+      estado: 'no_realizada',
+      motivo_no_visita: motivo.trim(),
+      check_out: new Date().toISOString(),
+    }, true)
   }
 
   const dentro = distancia != null && pdv != null &&
