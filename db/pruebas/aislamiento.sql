@@ -234,6 +234,43 @@ begin
   perform pg_temp.afirmar('El raiz de una empresa NO puede crear otra', not permitido);
   reset role;
 
+  raise notice '--- El administrador ve lo que da de alta ---';
+
+  -- El caso real: un administrador da de alta un cliente y nadie le
+  -- asigna nada en usuario_cliente. Antes de la migracion 012 el
+  -- insert pasaba y el select no, asi que la pantalla seguia diciendo
+  -- "sin clientes" y el segundo intento chocaba contra el unico.
+  perform set_config('request.jwt.claims',
+    '{"sub":"eeee0000-0000-0000-0000-0000000000b2","role":"authenticated"}', true);
+  set local role authenticated;
+
+  insert into cliente (organizacion_id, nombre)
+  values (v_bimbo, 'Marca recien dada de alta');
+
+  select count(*) into n from cliente where nombre = 'Marca recien dada de alta';
+  perform pg_temp.afirmar('El admin ve el cliente que acaba de crear', n = 1);
+
+  select count(*) into n from cliente;
+  perform pg_temp.afirmar('Y ve los dos de su empresa, no solo el asignado', n = 2);
+  reset role;
+
+  -- Sin ser admin no cambia nada: el supervisor sigue viendo lo suyo.
+  perform set_config('request.jwt.claims',
+    '{"sub":"eeee0000-0000-0000-0000-0000000000b3","role":"authenticated"}', true);
+  set local role authenticated;
+  select count(*) into n from cliente;
+  perform pg_temp.afirmar('El supervisor sigue viendo solo el asignado', n = 1);
+  reset role;
+
+  -- Y la frontera entre empresas aguanta: el nuevo cliente de Bimbo
+  -- no se asoma del otro lado.
+  perform set_config('request.jwt.claims',
+    '{"sub":"eeee0000-0000-0000-0000-0000000000c1","role":"authenticated"}', true);
+  set local role authenticated;
+  select count(*) into n from cliente;
+  perform pg_temp.afirmar('El admin de Nestle sigue sin ver nada de Bimbo', n = 1);
+  reset role;
+
   raise notice '--- Codigo de empleado ---';
 
   select count(*) into n from usuario where codigo = '1042';

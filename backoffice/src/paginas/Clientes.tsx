@@ -31,6 +31,11 @@ const TITULO: Record<Cual, string> = {
 const UNO: Record<Cual, string> = {
   cliente: 'cliente', region: 'región', cadena: 'cadena',
 }
+// El articulo correcto para cada una, para no acabar escribiendo
+// "Nombre de la cliente".
+const DEL: Record<Cual, string> = {
+  cliente: 'del cliente', region: 'de la región', cadena: 'de la cadena',
+}
 const PISTA: Record<Cual, string> = {
   cliente: 'La marca a la que le das servicio. De aquí cuelgan el catálogo y los formularios.',
   region: 'La zona en que repartes el territorio. Se le asigna a cada punto de venta y a cada promotor.',
@@ -105,7 +110,7 @@ export default function Clientes() {
     e.preventDefault()
     setAviso('')
     const nombre = texto.trim()
-    if (!nombre) { setAviso(`Escribe el nombre de la ${UNO[cual]}.`); return }
+    if (!nombre) { setAviso(`Escribe el nombre ${DEL[cual]}.`); return }
     if (!organizacion) { setAviso('Todavía estoy leyendo tu empresa. Espera un segundo.'); return }
 
     const { error } = await supabase.from(cual)
@@ -199,8 +204,8 @@ export default function Clientes() {
         {editable && (nuevo === cual ? (
           <form className="nuevo" onSubmit={e => agregar(e, cual)}>
             <input autoFocus value={texto} onChange={e => setTexto(e.target.value)}
-                   placeholder={'Nombre de la ' + UNO[cual]}
-                   aria-label={'Nombre de la ' + UNO[cual]} />
+                   placeholder={'Nombre ' + DEL[cual]}
+                   aria-label={'Nombre ' + DEL[cual]} />
             <button>Guardar</button>
             <button type="button" className="x" aria-label="Cancelar"
                     onClick={() => { setNuevo(null); setTexto('') }}>✕</button>
