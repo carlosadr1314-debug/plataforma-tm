@@ -95,6 +95,27 @@ begin
     ('eeee0000-0000-0000-0000-0000000000c1','eeee1111-0000-0000-0000-00000000000c'),
     ('eeee0000-0000-0000-0000-0000000000c4','eeee1111-0000-0000-0000-00000000000c');
 
+  -- Una marca que NADIE tiene asignada en usuario_cliente, con su
+  -- tienda, su ruta y una visita hecha. Es el caso real: el admin no
+  -- es el promotor de nada y nadie le asigna clientes, asi que si la
+  -- visibilidad depende solo de usuario_cliente, no ve el trabajo de
+  -- su propia empresa.
+  insert into cliente (id, organizacion_id, nombre) values
+    ('eeee1111-0000-0000-0000-00000000002b', v_bimbo, 'Marca sin asignar');
+
+  insert into pdv (id, organizacion_id, codigo, nombre, radio_checkin) values
+    ('eeee2222-0000-0000-0000-00000000000b', v_bimbo,  'PDV-B1', 'Tienda Bimbo',  150),
+    ('eeee2222-0000-0000-0000-00000000000c', v_nestle, 'PDV-C1', 'Tienda Nestle', 150);
+
+  insert into itinerario (id, cliente_id, usuario_id, pdv_id, fecha_programada) values
+    ('eeee3333-0000-0000-0000-00000000000b',
+     'eeee1111-0000-0000-0000-00000000002b',
+     'eeee0000-0000-0000-0000-0000000000b4',
+     'eeee2222-0000-0000-0000-00000000000b', current_date);
+
+  insert into visita (itinerario_id, estado, check_in) values
+    ('eeee3333-0000-0000-0000-00000000000b', 'completada', now());
+
   insert into producto (cliente_id, nombre) values
     ('eeee1111-0000-0000-0000-00000000000b', 'Producto de Bimbo'),
     ('eeee1111-0000-0000-0000-00000000000c', 'Producto de Nestle');
@@ -124,7 +145,8 @@ begin
   perform pg_temp.afirmar('El admin de Bimbo ve solo su organizacion', n = 1);
 
   select count(*) into n from cliente;
-  perform pg_temp.afirmar('El admin de Bimbo ve solo sus clientes', n = 1);
+  perform pg_temp.afirmar('El admin de Bimbo ve solo clientes de Bimbo',
+    n = (select count(*) from cliente where organizacion_id = v_bimbo));
 
   select count(*) into n from producto;
   perform pg_temp.afirmar('El admin de Bimbo ve solo su catalogo', n = 1);
@@ -251,7 +273,8 @@ begin
   perform pg_temp.afirmar('El admin ve el cliente que acaba de crear', n = 1);
 
   select count(*) into n from cliente;
-  perform pg_temp.afirmar('Y ve los dos de su empresa, no solo el asignado', n = 2);
+  perform pg_temp.afirmar('Y ve todos los de su empresa, no solo el asignado',
+    n = (select count(*) from cliente where organizacion_id = v_bimbo));
   reset role;
 
   -- Sin ser admin no cambia nada: el supervisor sigue viendo lo suyo.
@@ -268,7 +291,37 @@ begin
     '{"sub":"eeee0000-0000-0000-0000-0000000000c1","role":"authenticated"}', true);
   set local role authenticated;
   select count(*) into n from cliente;
-  perform pg_temp.afirmar('El admin de Nestle sigue sin ver nada de Bimbo', n = 1);
+  perform pg_temp.afirmar('El admin de Nestle sigue sin ver nada de Bimbo',
+    n = (select count(*) from cliente where organizacion_id = v_nestle));
+  reset role;
+
+  raise notice '--- El administrador ve el trabajo de su empresa ---';
+
+  -- El sintoma era confuso: el admin veia la ruta completa y el panel
+  -- de Visitas en cero. itinerario tiene una segunda politica "for
+  -- all" que le daba la lectura; visita no, y se quedaba colgada de
+  -- itinerarios_visibles(), donde el admin no caia.
+  perform set_config('request.jwt.claims',
+    '{"sub":"eeee0000-0000-0000-0000-0000000000b2","role":"authenticated"}', true);
+  set local role authenticated;
+
+  select count(*) into n from itinerario
+   where cliente_id = 'eeee1111-0000-0000-0000-00000000002b';
+  perform pg_temp.afirmar('El admin ve rutas de una marca que no tiene asignada', n = 1);
+
+  select count(*) into n from visita;
+  perform pg_temp.afirmar('Y las visitas que el promotor ya completo', n = 1);
+  reset role;
+
+  -- La frontera entre empresas no se movio.
+  perform set_config('request.jwt.claims',
+    '{"sub":"eeee0000-0000-0000-0000-0000000000c1","role":"authenticated"}', true);
+  set local role authenticated;
+  select count(*) into n from visita v
+    join itinerario i on i.id = v.itinerario_id
+    join pdv p on p.id = i.pdv_id
+   where p.organizacion_id = v_bimbo;
+  perform pg_temp.afirmar('El admin de Nestle no ve ninguna visita de Bimbo', n = 0);
   reset role;
 
   raise notice '--- Codigo de empleado ---';
