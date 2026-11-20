@@ -527,3 +527,8 @@ tr.fila-pdv.on{background:var(--azul-claro)}
 tr.fila-pdv.on td:first-child{box-shadow:inset 3px 0 0 var(--naranja)}
 tr.fila-pdv.sin-ubicar{cursor:default}
 tr.fila-pdv.sin-ubicar:hover{background:none}
+
+/* Una parada que nadie toco: se apaga para que las que si tienen
+   trabajo encima resalten al recorrer la tabla. */
+tr.sin-tocar td{color:var(--tinta-2)}
+tr.sin-tocar td b{color:var(--tinta-2)}

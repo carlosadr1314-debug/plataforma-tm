@@ -148,7 +148,22 @@ export default function Visita({ parada, onCerrar, onCambio }: {
       setMedicion({ metros: m, margen })
 
       const zona = zonaDeCheckin(m, margen, pdv.radio_checkin ?? 0)
-      if (zona === 'bloqueado') return              // la pantalla lo explica
+      if (zona === 'bloqueado') {
+        // El intento deja huella. Sin esto, "fue y el GPS no lo dejo"
+        // se ve en la oficina igual que "nunca fue", y son cosas muy
+        // distintas: una es un radio mal capturado, la otra es un
+        // promotor que no trabajo. Se guardan la distancia y las
+        // coordenadas, pero NO la hora de llegada: no llego.
+        await apuntar(parada.id, {
+          distancia_pdv: m,
+          check_in_lat: pos.coords.latitude,
+          check_in_lng: pos.coords.longitude,
+          check_in_precision: pos.coords.accuracy ?? null,
+          ubicacion_simulada: pos.mocked === true,
+        })
+        sincronizar().catch(() => {})
+        return                                      // la pantalla lo explica
+      }
       if (zona === 'cerca') { setConfirmar({ metros: m, pos }); return }
       return registrarLlegada(pos, m)
     }
@@ -286,7 +301,9 @@ export default function Visita({ parada, onCerrar, onCambio }: {
                 <Text style={s.pendienteTexto}>
                   Si ya estás adentro, espera unos segundos y vuelve a medir: bajo
                   techo el GPS tarda en acomodarse. Si de plano no te ubica, marca
-                  la visita como no realizada y dilo ahí; tu supervisor lo verá.
+                  la visita como no realizada y dilo ahí.{'\n\n'}
+                  Tu intento ya quedó anotado con la distancia, así que en la
+                  oficina no se va a ver como si no hubieras venido.
                 </Text>
               </View>
             )}
