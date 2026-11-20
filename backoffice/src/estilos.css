@@ -469,3 +469,35 @@ tr.clic.on td{background:var(--azul-claro)}
 .acceso-bloque .con-boton{margin-top:4px}
 .acceso-bloque code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
   font-weight:600;color:var(--tinta)}
+
+/* ---------------------------------------------------------------
+   Clientes, regiones y cadenas
+   Las tres listas de las que cuelga todo. Los renglones aqui no se
+   eligen —no abren nada a la derecha— asi que el nombre es texto y
+   no un boton, y no lleva el resaltado de ".fila-cat.on".
+   --------------------------------------------------------------- */
+.col .pista-col{
+  padding:10px 13px;margin:0;border-bottom:1px solid #EFEDE9;
+  font-size:12px;line-height:1.5;color:var(--tinta-2);background:var(--arena);
+}
+.col li .fila-cat > .nombre-fijo{
+  flex:1;min-width:0;padding:11px 13px;font-size:13.5px;color:var(--tinta);
+  display:flex;align-items:center;gap:8px;min-height:44px;
+}
+.col li.inactiva .fila-cat > .nombre-fijo{color:var(--tinta-2)}
+
+/* Borrar vive abajo y separado de Guardar: no se topa por error al
+   ir por el boton principal. */
+.panel .borrar{
+  width:100%;min-height:42px;margin-top:14px;
+  background:none;border:1px solid #E8BDB7;border-radius:8px;
+  color:#8E2A20;font:inherit;font-size:13px;font-weight:600;cursor:pointer;
+}
+.panel .borrar:hover{background:#F7DEDB}
+.panel .borrar:disabled{opacity:.5;cursor:default}
+
+/* El reparto 1fr 1fr 2fr del catalogo existe porque la tabla de SKUs
+   necesita el doble de ancho. Aqui las tres listas son del mismo tipo
+   y van iguales. */
+.cols.iguales{grid-template-columns:repeat(3,1fr)}
+@media (max-width:1100px){.cols.iguales{grid-template-columns:1fr}}

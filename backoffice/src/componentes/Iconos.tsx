@@ -34,6 +34,12 @@ export const IcoVisitas = () => (
     <circle cx="12" cy="10" r="3" /></svg>
 )
 
+// Etiqueta de marca: el cliente es la marca a la que se le da servicio.
+export const IcoMarca = () => (
+  <svg {...base}><path d="M3 11V5a2 2 0 0 1 2-2h6l10 10-8 8L3 11z" />
+    <circle cx="7.5" cy="7.5" r="1.3" /></svg>
+)
+
 export const IcoLapiz = () => (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
        strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

@@ -10,6 +10,7 @@ import FormularioEditor from './paginas/FormularioEditor'
 import Itinerarios from './paginas/Itinerarios'
 import Usuarios from './paginas/Usuarios'
 import Visitas from './paginas/Visitas'
+import Clientes from './paginas/Clientes'
 import Mapa from './paginas/Mapa'
 import Plataforma from './paginas/Plataforma'
 import { SinPerfil, SoloApp } from './paginas/Bloqueado'
@@ -44,6 +45,7 @@ function Rutas() {
       <Route element={<Layout />}>
         <Route index element={<Panel />} />
         <Route path="visitas" element={<Visitas />} />
+        <Route path="clientes" element={<Clientes />} />
         <Route path="pdvs" element={<Pdvs />} />
         <Route path="catalogo" element={<Catalogo />} />
         <Route path="formularios" element={<Formularios />} />

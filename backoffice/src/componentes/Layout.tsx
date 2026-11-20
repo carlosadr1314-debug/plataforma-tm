@@ -1,7 +1,7 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useSesion } from '../lib/sesion'
-import { IcoPanel, IcoTienda, IcoCaja, IcoGente, IcoForm, IcoRuta, IcoVisitas } from './Iconos'
+import { IcoPanel, IcoTienda, IcoCaja, IcoGente, IcoForm, IcoRuta, IcoVisitas, IcoMarca } from './Iconos'
 
 export default function Layout() {
   const { perfil } = useSesion()
@@ -19,6 +19,7 @@ export default function Layout() {
           <NavLink to="/" end className={clase}><IcoPanel /> Panel</NavLink>
           <NavLink to="/visitas" end className={clase}><IcoVisitas /> Visitas</NavLink>
           <NavLink to="/visitas/seguimiento" className={subclase}>Seguimiento en vivo</NavLink>
+          <NavLink to="/clientes" className={clase}><IcoMarca /> Clientes</NavLink>
           <NavLink to="/pdvs" className={clase}><IcoTienda /> Puntos de venta</NavLink>
           <NavLink to="/catalogo" className={clase}><IcoCaja /> Catálogo</NavLink>
           <NavLink to="/formularios" className={clase}><IcoForm /> Formularios</NavLink>
