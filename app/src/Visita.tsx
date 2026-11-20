@@ -6,6 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import * as Location from 'expo-location'
 import { apuntar, sincronizar } from './sinSenal'
+import { zonaDeCheckin, TOLERANCIA_M } from './radio'
 import { c, f, CIFRAS, TOCABLE } from './tema'
 
 // =====================================================================
@@ -14,13 +15,28 @@ import { c, f, CIFRAS, TOCABLE } from './tema'
 // Lo que el promotor abre al llegar a una tienda. Tres momentos:
 // registrar la llegada, levantar el formulario y cerrar.
 //
-// Sobre el radio: la llegada NO se bloquea por estar lejos. El GPS
-// dentro de una tienda se va facil cincuenta metros, y dejar a alguien
-// sin poder trabajar por eso es peor que el problema que resuelve. Lo
-// que se hace es medir la distancia, guardarla y decirsela en la cara
-// antes de registrar. La consola ya cuenta esas visitas como "fuera de
-// radio": el sistema esta hecho para registrar la discrepancia, no
-// para impedir el trabajo.
+// El radio tiene tres zonas, no dos:
+//
+//   dentro del radio       se registra y ya
+//   hasta 20 m mas alla    se avisa con la cifra y se deja registrar
+//   mas lejos que eso      no se deja; solo queda marcarla no realizada
+//
+// Veinte metros suenan a poquisimo y lo serian si se comparara la
+// distancia pelona. No se compara esa: se compara la distancia MENOS
+// el margen de error que reporta el propio telefono. La pregunta es
+// "¿aun en el mejor de los casos sigue lejos?". Si el GPS dice 300 m
+// con margen de 250, el mejor caso son 50 y se le da el beneficio de
+// la duda; si dice 900 con margen de 15, no hay duda que dar. Esa
+// resta es la que absorbe el GPS malo de adentro de una tienda, y por
+// eso la tolerancia de encima puede ser chica.
+//
+// La perilla de verdad es el radio de cada tienda, que ya se captura
+// una por una. Si en una tienda los promotores se topan seguido con
+// el bloqueo, lo que esta mal es su radio, no esta tolerancia.
+//
+// Y esto es un seguro contra errores honestos, no contra fraude: las
+// coordenadas las manda el telefono. Al tramposo lo delata el rastro
+// continuo de la jornada, que enseña si se acerco o no a la tienda.
 // =====================================================================
 
 export type Parada = {
@@ -71,7 +87,7 @@ export default function Visita({ parada, onCerrar, onCambio }: {
 
   const [trabajando, setTrabajando] = useState(false)
   const [error, setError] = useState('')
-  const [distancia, setDistancia] = useState<number | null>(null)
+  const [medicion, setMedicion] = useState<{ metros: number; margen: number } | null>(null)
   const [midiendo, setMidiendo] = useState(false)
   const [confirmar, setConfirmar] = useState<null | { metros: number; pos: Location.LocationObject }>(null)
   const [noRealizada, setNoRealizada] = useState(false)
@@ -91,8 +107,11 @@ export default function Visita({ parada, onCerrar, onCambio }: {
         const pos = await Location.getCurrentPositionAsync(
           { accuracy: Location.Accuracy.High })
         if (!vivo) return
-        setDistancia(metrosEntre(pos.coords.latitude, pos.coords.longitude,
-                                 pdv.lat as number, pdv.lng as number))
+        setMedicion({
+          metros: metrosEntre(pos.coords.latitude, pos.coords.longitude,
+                              pdv.lat as number, pdv.lng as number),
+          margen: Math.round(pos.coords.accuracy ?? 0),
+        })
       } catch { /* sin señal de GPS todavia */ }
       finally { if (vivo) setMidiendo(false) }
     })()
@@ -125,8 +144,12 @@ export default function Visita({ parada, onCerrar, onCambio }: {
     if (pdv?.lat && pdv?.lng) {
       const m = metrosEntre(pos.coords.latitude, pos.coords.longitude,
                             pdv.lat as number, pdv.lng as number)
-      setDistancia(m)
-      if (m > (pdv.radio_checkin ?? 0)) { setConfirmar({ metros: m, pos }); return }
+      const margen = Math.round(pos.coords.accuracy ?? 0)
+      setMedicion({ metros: m, margen })
+
+      const zona = zonaDeCheckin(m, margen, pdv.radio_checkin ?? 0)
+      if (zona === 'bloqueado') return              // la pantalla lo explica
+      if (zona === 'cerca') { setConfirmar({ metros: m, pos }); return }
       return registrarLlegada(pos, m)
     }
     // Tienda sin coordenadas: no hay contra que medir.
@@ -181,8 +204,13 @@ export default function Visita({ parada, onCerrar, onCambio }: {
     }, true)
   }
 
-  const dentro = distancia != null && pdv != null &&
-                 distancia <= (pdv.radio_checkin ?? 0)
+  // Las tres zonas, calculadas en un solo lugar.
+  const radio = pdv?.radio_checkin ?? 0
+  const limite = radio + TOLERANCIA_M
+  const zona = medicion ? zonaDeCheckin(medicion.metros, medicion.margen, radio) : null
+  const dentro = zona === 'dentro'
+  const cerca = zona === 'cerca'
+  const bloqueado = zona === 'bloqueado'
 
   return (
     <SafeAreaView style={s.pantalla} edges={['top', 'bottom', 'left', 'right']}>
@@ -211,13 +239,16 @@ export default function Visita({ parada, onCerrar, onCambio }: {
 
         {estado === 'programada' && (
           <>
-            <View style={[s.medida, dentro ? s.medidaOk : distancia != null && s.medidaLejos]}>
+            <View style={[s.medida,
+                          dentro && s.medidaOk,
+                          cerca && s.medidaLejos,
+                          bloqueado && s.medidaMala]}>
               {midiendo ? (
                 <>
                   <ActivityIndicator color={c.azul} />
                   <Text style={s.medidaTexto}>Midiendo qué tan lejos estás…</Text>
                 </>
-              ) : distancia == null ? (
+              ) : medicion == null ? (
                 <Text style={s.medidaTexto}>
                   {pdv?.lat
                     ? 'Todavía sin señal de GPS. Puedes registrar la llegada de todos modos.'
@@ -225,19 +256,43 @@ export default function Visita({ parada, onCerrar, onCambio }: {
                 </Text>
               ) : (
                 <>
-                  <Text style={[s.metros, dentro ? s.metrosOk : s.metrosLejos]}>
-                    {distancia} m
+                  <Text style={[s.metros,
+                                dentro && s.metrosOk,
+                                cerca && s.metrosLejos,
+                                bloqueado && s.metrosMal]}>
+                    {medicion.metros} m
                   </Text>
                   <Text style={s.medidaTexto}>
                     {dentro
-                      ? `Estás dentro del radio de la tienda (${pdv?.radio_checkin} m).`
-                      : `La tienda está a ${pdv?.radio_checkin} m a la redonda. Estás fuera.`}
+                      ? `Estás dentro del radio de la tienda (${radio} m).`
+                      : bloqueado
+                        ? `Estás demasiado lejos para registrar. El límite son ${limite} m ` +
+                          `desde el centro de la tienda.`
+                        : `La tienda está a ${radio} m a la redonda. Estás apenas fuera.`}
                   </Text>
+                  {medicion.margen > 0 && (
+                    <Text style={s.margenTexto}>
+                      El GPS reporta un margen de ±{medicion.margen} m
+                      {bloqueado ? ', y aun así te deja fuera.' : '.'}
+                    </Text>
+                  )}
                 </>
               )}
             </View>
 
-            <Boton texto="REGISTRAR LLEGADA" onPress={intentarLlegada} ocupado={trabajando} />
+            {bloqueado && (
+              <View style={s.pendiente}>
+                <Text style={s.pendienteTitulo}>Acércate a la tienda</Text>
+                <Text style={s.pendienteTexto}>
+                  Si ya estás adentro, espera unos segundos y vuelve a medir: bajo
+                  techo el GPS tarda en acomodarse. Si de plano no te ubica, marca
+                  la visita como no realizada y dilo ahí; tu supervisor lo verá.
+                </Text>
+              </View>
+            )}
+
+            <Boton texto={bloqueado ? 'VOLVER A MEDIR' : 'REGISTRAR LLEGADA'}
+                   onPress={intentarLlegada} ocupado={trabajando} />
             <Pressable style={s.enlace} onPress={() => { setError(''); setNoRealizada(true) }}
                        accessibilityRole="button">
               <Text style={s.enlaceTexto}>No se pudo hacer esta visita</Text>
@@ -389,6 +444,10 @@ const s = StyleSheet.create({
   metrosMal: { color: c.errorTexto },
   medidaTexto: { fontFamily: f.texto, fontSize: 14, color: c.tinta2,
     textAlign: 'center', lineHeight: 20 },
+  // El margen se enseña siempre: es lo que explica por que una cifra
+  // que parece buena no alcanza, o al reves.
+  margenTexto: { fontFamily: f.texto, fontSize: 12, color: c.neutroTexto,
+    textAlign: 'center' },
 
   pendiente: { backgroundColor: c.neutroSuave, borderRadius: 10, padding: 14, gap: 4 },
   pendienteTitulo: { fontFamily: f.textoFuerte, fontSize: 14.5, color: c.neutroTexto },

@@ -4,3 +4,4 @@
 import { register } from 'node:module'
 register('./ganchos.mjs', import.meta.url)
 await import('./sinSenal.prueba.ts')
+await import('./zonaCheckin.prueba.ts')

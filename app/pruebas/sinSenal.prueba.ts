@@ -50,5 +50,5 @@ function afirmar(que: string, cierto: boolean) {
   afirmar('la de ayer no se usa', (await rutaGuardada('2026-11-19')) === null)
 
   console.log(`\n${ok} pasaron, ${mal} fallaron`)
-  process.exit(mal ? 1 : 0)
+  if (mal) process.exitCode = 1
 })()
