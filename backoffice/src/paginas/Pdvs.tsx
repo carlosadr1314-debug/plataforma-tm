@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
 import { useSesion, puede } from '../lib/sesion'
+import MapaPdv, { type PuntoMapa } from '../componentes/MapaPdv'
 
 type Pdv = {
   id: string; codigo: string; nombre: string
@@ -29,6 +30,25 @@ export default function Pdvs() {
   const [errores, setErrores] = useState<Record<string, string>>({})
   const [aviso, setAviso] = useState('')
   const [guardando, setGuardando] = useState(false)
+  const [enfocado, setEnfocado] = useState<string | null>(null)
+
+  // Lo que el mapa de la lista pinta: solo las tiendas ya ubicadas.
+  const ubicadas: PuntoMapa[] = lista
+    .filter(p => p.lat != null && p.lng != null)
+    .map(p => ({ id: p.id, codigo: p.codigo, nombre: p.nombre,
+                 lat: p.lat as number, lng: p.lng as number, radio: p.radio_checkin }))
+
+  // Lo que el mapa del panel pinta: la tienda que se esta capturando,
+  // en cuanto tenga coordenadas validas.
+  const enCaptura: PuntoMapa[] = (() => {
+    const la = parseFloat(form.lat), lo = parseFloat(form.lng)
+    if (!Number.isFinite(la) || !Number.isFinite(lo)) return []
+    return [{ id: 'nuevo', codigo: form.codigo || '?', nombre: form.nombre || 'Nueva tienda',
+              lat: la, lng: lo, radio: parseInt(form.radio_checkin) || 0 }]
+  })()
+
+  const ponerPin = (lat: number, lng: number) =>
+    setForm(f => ({ ...f, lat: lat.toFixed(6), lng: lng.toFixed(6) }))
 
   async function cargar() {
     setCargando(true)
@@ -135,6 +155,11 @@ export default function Pdvs() {
         )}
       </div>
 
+      {!cargando && lista.length > 0 && (
+        <MapaPdv puntos={ubicadas} activo={enfocado}
+                 altura={ubicadas.length > 1 ? 380 : 320} />
+      )}
+
       <div className="tabla">
         {cargando ? (
           <p className="vacio">Cargando puntos de venta…</p>
@@ -153,7 +178,12 @@ export default function Pdvs() {
             </thead>
             <tbody>
               {lista.map(p => (
-                <tr key={p.id}>
+                <tr key={p.id}
+                    className={'fila-pdv' + (p.id === enfocado ? ' on' : '')
+                               + (p.lat == null ? ' sin-ubicar' : '')}
+                    onClick={() => setEnfocado(p.id === enfocado ? null : p.id)}
+                    title={p.lat == null ? 'Sin coordenadas: no sale en el mapa'
+                                         : 'Ver en el mapa'}>
                   <td className="num"><b>{p.codigo}</b></td>
                   <td>{p.nombre}</td>
                   <td>{p.cadena?.nombre ?? '—'}</td>
@@ -207,6 +237,8 @@ export default function Pdvs() {
                 {campo('lat', 'Latitud', 'number', 'any')}
                 {campo('lng', 'Longitud', 'number', 'any')}
               </div>
+
+              <MapaPdv puntos={enCaptura} altura={230} onMover={ponerPin} />
 
               <div className="dos" style={{ marginTop: 6 }}>
                 <button type="button" className="btn sec" onClick={() => setAbierto(false)}>
