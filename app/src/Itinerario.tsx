@@ -6,6 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { supabase } from './supabase'
 import BarraJornada from './BarraJornada'
+import Visita, { type Parada as ParadaVisita } from './Visita'
 import { c, f, TOCABLE, SEPARACION, CIFRAS } from './tema'
 
 type Parada = {
@@ -47,6 +48,7 @@ export default function Itinerario() {
   const [cargando, setCargando] = useState(true)
   const [refrescando, setRefrescando] = useState(false)
   const [error, setError] = useState('')
+  const [abierta, setAbierta] = useState<string | null>(null)
 
   const cargar = useCallback(async () => {
     setError('')
@@ -61,9 +63,9 @@ export default function Itinerario() {
     // usuario, las politicas de seguridad solo devuelven su ruta.
     const { data, error: err } = await supabase.from('itinerario')
       .select(`id,hora_estimada,
-               pdv:pdv_id(codigo,nombre,direccion,ciudad),
+               pdv:pdv_id(codigo,nombre,direccion,ciudad,lat,lng,radio_checkin),
                tarea:tarea_id(nombre),
-               visita(id,estado,check_in,check_out)`)
+               visita(id,estado,check_in,check_out,distancia_pdv,motivo_no_visita)`)
       .eq('fecha_programada', hoyLocal())
       .order('hora_estimada')
 
@@ -90,6 +92,19 @@ export default function Itinerario() {
         <ActivityIndicator color={c.azul} size="large" />
         <Text style={s.cargandoTexto}>Cargando tu ruta…</Text>
       </SafeAreaView>
+    )
+  }
+
+  // La visita se monta encima de la ruta: una pantalla a la vez, que es
+  // lo que se puede manejar con una mano en el pasillo de una tienda.
+  const paradaAbierta = paradas.find(p => p.id === abierta)
+  if (paradaAbierta) {
+    return (
+      <Visita
+        parada={paradaAbierta as unknown as ParadaVisita}
+        onCerrar={() => setAbierta(null)}
+        onCambio={() => { cargar(); setAbierta(null) }}
+      />
     )
   }
 
@@ -147,6 +162,7 @@ export default function Itinerario() {
               style={({ pressed }) => [
                 s.tarjeta, { borderLeftColor: e.canto }, pressed && s.tarjetaPresionada,
               ]}
+              onPress={() => setAbierta(item.id)}
               accessibilityRole="button"
               accessibilityLabel={
                 `Parada ${index + 1}, ${hora}, ${item.pdv?.nombre ?? 'sin nombre'}, ${e.txt.toLowerCase()}`
