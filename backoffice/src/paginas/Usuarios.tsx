@@ -1,4 +1,6 @@
 import { useEffect, useState, useCallback, type FormEvent } from 'react'
+import HorarioSemanal, { SEMANA_VACIA, minutosEntre, type Dia }
+  from '../componentes/HorarioSemanal'
 import { supabase } from '../lib/supabase'
 import { useSesion, puedeGestionarUsuarios } from '../lib/sesion'
 
@@ -42,6 +44,10 @@ export default function Usuarios() {
   const [editando, setEditando] = useState<Usuario | null>(null)
   const [form, setForm] = useState({ ...vacio })
   const [misClientes, setMisClientes] = useState<string[]>([])
+  const [horarios, setHorarios] = useState<Record<string, any[]>>({})
+  const [semana, setSemana] = useState<Dia[]>(SEMANA_VACIA())
+  const [comida, setComida] = useState(60)
+  const [orgId, setOrgId] = useState('')
   const [guardando, setGuardando] = useState(false)
 
   const [altaAbierta, setAltaAbierta] = useState(false)
@@ -109,6 +115,20 @@ export default function Usuarios() {
       (mapa[r.usuario_id] ??= []).push(r.cliente_id)
     })
     setAsignados(mapa)
+
+    const { data: s } = await supabase.auth.getSession()
+    if (s.session?.user?.id) {
+      const { data: mio } = await supabase.from('usuario')
+        .select('organizacion_id').eq('id', s.session.user.id).maybeSingle()
+      if (mio?.organizacion_id) setOrgId(mio.organizacion_id)
+    }
+
+    const { data: hs } = await supabase.from('horario_promotor')
+      .select('usuario_id,dia_semana,entrada,salida,minutos_comida')
+    const porUsuario: Record<string, any[]> = {}
+    ;(hs ?? []).forEach(h => { (porUsuario[h.usuario_id] ??= []).push(h) })
+    setHorarios(porUsuario)
+
     setCargando(false)
   }, [])
 
@@ -136,6 +156,22 @@ export default function Usuarios() {
       activo: u.activo,
     })
     setMisClientes(asignados[u.id] ?? [])
+
+    // El horario vive aparte del usuario; se arma la semana completa
+    // y se encienden los dias que tengan renglon.
+    const suyo = horarios[u.id] ?? []
+    const sem = SEMANA_VACIA()
+    suyo.forEach(h => {
+      const i = Number(h.dia_semana)
+      if (i >= 0 && i <= 6) {
+        sem[i] = { trabaja: true,
+                   entrada: String(h.entrada).slice(0, 5),
+                   salida: String(h.salida).slice(0, 5) }
+      }
+    })
+    setSemana(sem)
+    setComida(suyo.length ? Number(suyo[0].minutos_comida) : 60)
+
     setNipNuevo(''); setEnlace(null)
   }
 
@@ -152,12 +188,48 @@ export default function Usuarios() {
     }
   }
 
+  /**
+   * Deja el horario del promotor igual a lo que muestra la pantalla.
+   * Se borra y se vuelve a poner en lugar de ir renglon por renglon:
+   * son siete filas como mucho, y asi no quedan dias zombis de una
+   * configuracion anterior.
+   */
+  async function guardarHorario(usuarioId: string, esPromotor: boolean) {
+    const { error: errBorrar } = await supabase.from('horario_promotor')
+      .delete().eq('usuario_id', usuarioId)
+    if (errBorrar) return errBorrar.message
+
+    // A quien deja de ser promotor se le quita el horario y ya.
+    if (!esPromotor) return null
+
+    const filas = semana.flatMap((d, i) => d.trabaja ? [{
+      organizacion_id: orgId,
+      usuario_id: usuarioId,
+      dia_semana: i,
+      entrada: d.entrada,
+      salida: d.salida,
+      minutos_comida: comida,
+    }] : [])
+    if (filas.length === 0) return null
+
+    const { error } = await supabase.from('horario_promotor').insert(filas)
+    return error ? error.message : null
+  }
+
   async function guardar(e: FormEvent) {
     e.preventDefault()
     setAviso('')
     if (!editando) return
     if (!form.nombre.trim()) { setAviso('Escribe el nombre de la persona.'); return }
     if (!form.perfil_id) { setAviso('Elige un perfil.'); return }
+
+    // Un horario con la salida antes de la entrada lo rechaza la base
+    // igual, pero con un mensaje que no se entiende.
+    const malos = semana.filter(d => d.trabaja && minutosEntre(d.entrada, d.salida) <= 0)
+    if (form.es_promotor && malos.length) {
+      setAviso('Hay días con la salida antes de la entrada. Corrígelos antes de guardar.')
+      return
+    }
 
     setGuardando(true)
     const { error } = await supabase.from('usuario').update({
@@ -178,7 +250,9 @@ export default function Usuarios() {
     }
 
     await sincronizarClientes(editando.id, asignados[editando.id] ?? [], misClientes)
+    const errHorario = await guardarHorario(editando.id, form.es_promotor)
     setGuardando(false)
+    if (errHorario) { setAviso('Se guardó la persona, pero el horario no: ' + errHorario); return }
     setEditando(null)
     cargar()
     flash('Usuario actualizado')
@@ -259,6 +333,14 @@ export default function Usuarios() {
     if (!cuenta) { setAviso('Elige la cuenta a la que vas a dar perfil.'); return }
     if (!form.nombre.trim()) { setAviso('Escribe el nombre de la persona.'); return }
     if (!form.perfil_id) { setAviso('Elige un perfil.'); return }
+
+    // Un horario con la salida antes de la entrada lo rechaza la base
+    // igual, pero con un mensaje que no se entiende.
+    const malos = semana.filter(d => d.trabaja && minutosEntre(d.entrada, d.salida) <= 0)
+    if (form.es_promotor && malos.length) {
+      setAviso('Hay días con la salida antes de la entrada. Corrígelos antes de guardar.')
+      return
+    }
 
     setGuardando(true)
     const { data: mio } = await supabase.from('usuario')
@@ -505,6 +587,19 @@ export default function Usuarios() {
 
             <form onSubmit={guardar} noValidate>
               {campos(true)}
+
+              {form.es_promotor && (
+                <div className="bloque-horario">
+                  <h4>Horario que le toca cumplir</h4>
+                  <p className="nota-panel" style={{ marginTop: 0 }}>
+                    Lo ve en su teléfono al hacer el check-in de seguridad, y es
+                    contra esto que se mide su cumplimiento.
+                  </p>
+                  <HorarioSemanal dias={semana} comida={comida}
+                                  onDias={setSemana} onComida={setComida} />
+                </div>
+              )}
+
               <div className="dos" style={{ marginTop: 6 }}>
                 <button type="button" className="btn sec" onClick={() => setEditando(null)}>
                   Cancelar
