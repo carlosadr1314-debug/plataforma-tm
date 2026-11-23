@@ -7,7 +7,10 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { supabase } from './supabase'
 import BarraJornada from './BarraJornada'
 import Visita, { type Parada as ParadaVisita } from './Visita'
-import { guardarRuta, rutaGuardada, pendientes, sincronizar, bajarFormulario } from './sinSenal'
+import {
+  guardarRuta, rutaGuardada, pendientes, sincronizar, bajarFormulario,
+  nombreGuardado, guardarNombre,
+} from './sinSenal'
 import { AppState } from 'react-native'
 import { c, f, TOCABLE, SEPARACION, CIFRAS } from './tema'
 
@@ -54,72 +57,101 @@ export default function Itinerario() {
   const [sinEnviar, setSinEnviar] = useState(0)
   const [deGuardado, setDeGuardado] = useState(false)
 
-  const cargar = useCallback(async () => {
-    setError('')
-    const hoy = hoyLocal()
-
-    // Lo pendiente se intenta mandar antes de leer: si sale, lo que
-    // devuelva el servidor ya viene completo y no hay que encimarle nada.
-    const quedan = await sincronizar().catch(() => -1)
-
-    const { data: u } = await supabase.auth.getUser()
-    if (u.user) {
-      const { data: perfil } = await supabase.from('usuario')
-        .select('nombre').eq('id', u.user.id).maybeSingle()
-      if (perfil) setNombre(perfil.nombre)
-    }
-
-    // El aislamiento lo hace la base: esta consulta no filtra por
-    // usuario, las politicas de seguridad solo devuelven su ruta.
-    const { data, error: err } = await supabase.from('itinerario')
-      .select(`id,hora_estimada,cliente_id,
-               pdv:pdv_id(codigo,nombre,direccion,ciudad,lat,lng,radio_checkin),
-               tarea:tarea_id(nombre,formulario_id),
-               visita(id,estado,check_in,check_out,distancia_pdv,motivo_no_visita)`)
-      .eq('fecha_programada', hoy)
-      .order('hora_estimada')
-
-    let ruta: any[] | null = null
-    if (err || !data) {
-      // Sin red: se trabaja con la ruta que quedo guardada. Si tampoco
-      // hay guardada, ahi si no hay nada que mostrar.
-      const g = await rutaGuardada(hoy)
-      ruta = g?.paradas as any[] ?? null
-      setDeGuardado(!!ruta)
-      setError(ruta
-        ? ''
-        : 'No se pudo cargar tu ruta y no hay una guardada en el teléfono. ' +
-          'Busca señal y desliza hacia abajo para reintentar.')
-    } else {
-      ruta = data as any[]
-      setDeGuardado(false)
-      guardarRuta(hoy, ruta)
-
-      // Los formularios del dia se bajan aqui, de mañana y con señal.
-      // Adentro de la tienda ya no hay red, y un formulario que no se
-      // alcanzo a bajar deja al promotor parado sin poder capturar.
-      const porBajar = new Map<string, string>()
-      ruta.forEach((p: any) => {
-        if (p.tarea?.formulario_id && p.cliente_id)
-          porBajar.set(p.tarea.formulario_id, p.cliente_id)
-      })
-      porBajar.forEach((cli, form) => { void bajarFormulario(form, cli).catch(() => {}) })
-    }
-
-    // Lo que el promotor hizo sin señal se encima a lo que dice el
-    // servidor: en su pantalla la visita ya esta hecha, aunque alla
-    // todavia no haya llegado.
+  // Lo que el promotor hizo sin señal se encima a lo que venga: en su
+  // pantalla la visita ya esta hecha, aunque al servidor todavia no
+  // haya llegado.
+  const pintar = useCallback(async (ruta: any[], guardada: boolean) => {
     const pend = await pendientes()
     setSinEnviar(Object.keys(pend).length)
-    setParadas((ruta ?? []).map(p => {
+    setParadas(ruta.map(p => {
       const extra = pend[p.id]
       if (!extra) return p
       return { ...p, visita: { ...(unaVisita(p.visita) ?? {}), ...extra } }
     }))
-    if (quedan === 0) setSinEnviar(0)
+    setDeGuardado(guardada)
   }, [])
 
-  useEffect(() => { cargar().finally(() => setCargando(false)) }, [cargar])
+  const cargar = useCallback(async (primera = false) => {
+    setError('')
+    const hoy = hoyLocal()
+
+    // Abrir la aplicacion no deberia costar un viaje al servidor antes
+    // de ver la primera linea. Si la ruta de hoy ya se bajo, se pinta
+    // de inmediato y la red nada mas la refresca por detras.
+    if (primera) {
+      const n = await nombreGuardado()
+      if (n) setNombre(n)
+      const g = await rutaGuardada(hoy)
+      if (g?.paradas) {
+        await pintar(g.paradas as any[], false)
+        setCargando(false)
+      }
+    }
+
+    // Lo pendiente sale solo. Antes se esperaba a que terminara para
+    // enseñar la ruta, y sin señal eso eran doce segundos de rueda
+    // girando por algo que al promotor no le urge ver.
+    void sincronizar().then(q => { if (q === 0) setSinEnviar(0) }).catch(() => {})
+
+    // getSession lee la sesion del telefono. getUser la iba a preguntar
+    // al servidor cada vez, para sacar un id que ya estaba aqui.
+    const { data: s } = await supabase.auth.getSession()
+    const uid = s.session?.user?.id ?? null
+
+    // El nombre y la ruta no dependen uno del otro: van juntos, no uno
+    // tras otro.
+    const [perfil, resp] = await Promise.all([
+      uid
+        ? supabase.from('usuario').select('nombre').eq('id', uid).maybeSingle()
+        : Promise.resolve({ data: null as { nombre: string } | null }),
+      // El aislamiento lo hace la base: esta consulta no filtra por
+      // usuario, las politicas de seguridad solo devuelven su ruta.
+      supabase.from('itinerario')
+        .select(`id,hora_estimada,cliente_id,
+                 pdv:pdv_id(codigo,nombre,direccion,ciudad,lat,lng,radio_checkin),
+                 tarea:tarea_id(nombre,formulario_id),
+                 visita(id,estado,check_in,check_out,distancia_pdv,motivo_no_visita)`)
+        .eq('fecha_programada', hoy)
+        .order('hora_estimada'),
+    ])
+
+    if (perfil.data?.nombre) {
+      setNombre(perfil.data.nombre)
+      void guardarNombre(perfil.data.nombre)
+    }
+
+    const { data, error: err } = resp
+    if (err || !data) {
+      // Sin red: se trabaja con la ruta que quedo guardada. Si tampoco
+      // hay guardada, ahi si no hay nada que mostrar.
+      const g = await rutaGuardada(hoy)
+      if (g?.paradas) {
+        await pintar(g.paradas as any[], true)
+      } else {
+        setParadas([])
+        setDeGuardado(false)
+        setError('No se pudo cargar tu ruta y no hay una guardada en el teléfono. ' +
+                 'Busca señal y desliza hacia abajo para reintentar.')
+      }
+      return
+    }
+
+    const ruta = data as any[]
+    guardarRuta(hoy, ruta)
+    await pintar(ruta, false)
+
+    // Los formularios del dia se bajan aqui, de mañana y con señal.
+    // Adentro de la tienda ya no hay red, y un formulario que no se
+    // alcanzo a bajar deja al promotor parado sin poder capturar.
+    const porBajar = new Map<string, string>()
+    ruta.forEach((p: any) => {
+      if (p.tarea?.formulario_id && p.cliente_id)
+        porBajar.set(p.tarea.formulario_id, p.cliente_id)
+    })
+    porBajar.forEach((cli, form) => { void bajarFormulario(form, cli).catch(() => {}) })
+  }, [pintar])
+
+  useEffect(() => { cargar(true).finally(() => setCargando(false)) }, [cargar])
 
   // Volver a la aplicacion es la mejor señal de que puede haber red.
   useEffect(() => {

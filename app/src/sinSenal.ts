@@ -32,6 +32,7 @@ const LLAVE_RUTA = 'tm.ruta'
 const LLAVE_PENDIENTES = 'tm.visitas.pendientes'
 const LLAVE_RESPUESTAS = 'tm.respuestas.pendientes'
 const LLAVE_FORMULARIOS = 'tm.formularios'
+const LLAVE_NOMBRE = 'tm.nombre'
 
 export type CamposVisita = Record<string, unknown>
 export type Pendientes = Record<string, CamposVisita>
@@ -98,6 +99,11 @@ export function apuntar(itinerarioId: string, campos: CamposVisita): Promise<Pen
     return p
   })
 }
+
+/** El nombre del promotor no cambia; preguntarlo cada vez es un viaje
+ *  al servidor a cambio de nada. */
+export const nombreGuardado = () => leerJson<string>(LLAVE_NOMBRE, '')
+export const guardarNombre = (n: string) => guardarJson(LLAVE_NOMBRE, n)
 
 // ---------------------------------------------------------------------
 // Los formularios del dia
