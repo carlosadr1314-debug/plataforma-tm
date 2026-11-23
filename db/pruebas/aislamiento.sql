@@ -215,6 +215,102 @@ begin
                           not puede_gestionar_usuarios());
   reset role;
 
+
+  raise notice '--- Horario, comida y check-in de seguridad ---';
+
+  -- La oficina configura el horario.
+  perform set_config('request.jwt.claims',
+    '{"sub":"eeee0000-0000-0000-0000-0000000000b2","role":"authenticated"}', true);
+  set local role authenticated;
+
+  insert into horario_promotor (organizacion_id, usuario_id, dia_semana,
+                                entrada, salida, minutos_comida)
+  values (v_bimbo, 'eeee0000-0000-0000-0000-0000000000b4',
+          extract(dow from current_date)::smallint, '09:00', '18:00', 45);
+  perform pg_temp.afirmar('El admin configura el horario del promotor', true);
+
+  reset role;
+
+  -- El promotor lo ve pero no lo mueve: si pudiera, el registro de
+  -- cumplimiento no valdria nada.
+  perform set_config('request.jwt.claims',
+    '{"sub":"eeee0000-0000-0000-0000-0000000000b4","role":"authenticated"}', true);
+  set local role authenticated;
+
+  select count(*) into n from horario_promotor;
+  perform pg_temp.afirmar('El promotor ve su horario', n = 1);
+
+  select count(*) into n from mi_horario();
+  perform pg_temp.afirmar('mi_horario() le da el de hoy', n = 1);
+  select count(*) into n from mi_horario(current_date + 0);
+  perform pg_temp.afirmar('y los minutos de comida vienen con el',
+    (select minutos_comida from mi_horario()) = 45);
+
+  permitido := false;
+  begin
+    update horario_promotor set entrada = '11:00'
+     where usuario_id = 'eeee0000-0000-0000-0000-0000000000b4';
+    permitido := found;
+  exception when others then null;
+  end;
+  perform pg_temp.afirmar('El promotor NO puede moverse su horario', not permitido);
+
+  -- El check-in de seguridad abre el dia y deja constancia de donde.
+  perform check_in_seguridad(19.58, -99.01, 12.0);
+  select count(*) into n from jornada
+   where usuario_id = auth.uid() and check_in_seguridad is not null
+     and seguridad_lat = 19.58;
+  perform pg_temp.afirmar('El check-in de seguridad abre la jornada con ubicacion', n = 1);
+
+  -- Reintentar no abre otra: el telefono reintenta cuando no hay señal.
+  perform check_in_seguridad(19.58, -99.01, 12.0);
+  select count(*) into n from jornada where usuario_id = auth.uid() and fin is null;
+  perform pg_temp.afirmar('Reintentarlo no abre una segunda jornada', n = 1);
+
+  -- La comida.
+  insert into comida (jornada_id, minutos_asignados)
+  select id, 45 from jornada where usuario_id = auth.uid() and fin is null;
+  perform pg_temp.afirmar('El promotor marca su comida', true);
+
+  permitido := false;
+  begin
+    insert into comida (jornada_id, minutos_asignados)
+    select id, 45 from jornada where usuario_id = auth.uid() and fin is null;
+    permitido := true;
+  exception when others then null;
+  end;
+  perform pg_temp.afirmar('No puede estar en dos comidas a la vez', not permitido);
+
+  -- Evidencia que cuelga de la jornada, no de una visita.
+  insert into evidencia (jornada_id, tipo, storage_path)
+  select id, 'regreso_comida', 'org/jornada/x/foto.jpg'
+    from jornada where usuario_id = auth.uid() and fin is null;
+  select count(*) into n from evidencia where tipo = 'regreso_comida';
+  perform pg_temp.afirmar('La foto de regreso cuelga de la jornada', n = 1);
+
+  -- Y una que no cuelga de nada no se acepta.
+  permitido := false;
+  begin
+    insert into evidencia (tipo, storage_path) values ('pregunta', 'suelta.jpg');
+    permitido := true;
+  exception when others then null;
+  end;
+  perform pg_temp.afirmar('Una evidencia suelta se rechaza', not permitido);
+
+  reset role;
+
+  -- El promotor de la otra empresa no ve nada de esto.
+  perform set_config('request.jwt.claims',
+    '{"sub":"eeee0000-0000-0000-0000-0000000000c4","role":"authenticated"}', true);
+  set local role authenticated;
+
+  select count(*) into n from horario_promotor;
+  perform pg_temp.afirmar('El horario no se ve desde la otra empresa', n = 0);
+  select count(*) into n from comida;
+  perform pg_temp.afirmar('Ni la comida', n = 0);
+
+  reset role;
+
   raise notice '--- El promotor ---';
 
   perform set_config('request.jwt.claims',
