@@ -557,3 +557,46 @@ tr.sin-tocar td b{color:var(--tinta-2)}
   background:var(--arena); border:1px solid var(--borde); border-radius:8px;
   padding:10px 12px; text-align:left; word-break:break-word; color:var(--tinta);
 }
+
+/* ---------- evidencia en grande ---------- */
+.foto-t{border:1px solid var(--borde);background:var(--arena);padding:0;cursor:pointer}
+.foto-t:is(button){display:block}
+.foto-t:is(button):hover{border-color:var(--azul)}
+.foto-t:is(button):focus-visible{outline:2px solid var(--naranja);outline-offset:2px}
+
+.lupa{
+  position:fixed; inset:0; z-index:60; display:flex; align-items:center;
+  justify-content:center; padding:24px;
+  background:rgba(28,26,23,.82);
+}
+.lupa-caja{
+  background:var(--superficie); border-radius:12px; overflow:hidden;
+  max-width:min(900px,100%); max-height:100%; display:flex; flex-direction:column;
+}
+.lupa-cabeza{
+  display:flex; align-items:flex-start; gap:14px; justify-content:space-between;
+  padding:14px 16px; border-bottom:1px solid var(--borde);
+}
+.lupa-cabeza h4{
+  font-family:'Barlow Condensed',sans-serif; text-transform:uppercase;
+  font-size:18px; font-weight:600; margin:0 0 3px; line-height:1.2;
+}
+.lupa-cabeza p{margin:0; font-size:12.5px; color:var(--tinta-2)}
+.lupa-cabeza .cifras{font-variant-numeric:tabular-nums}
+.lupa-x{
+  flex:0 0 auto; width:34px; height:34px; border-radius:8px; cursor:pointer;
+  border:1px solid var(--borde); background:transparent; color:var(--tinta);
+  font-size:21px; line-height:1;
+}
+.lupa-x:hover{background:var(--arena)}
+.lupa-x:focus-visible{outline:2px solid var(--naranja); outline-offset:2px}
+.lupa-caja img{
+  display:block; max-width:100%; max-height:calc(100vh - 160px);
+  object-fit:contain; margin:0 auto; background:var(--tinta);
+}
+
+@media (max-width:560px){
+  .lupa{padding:0}
+  .lupa-caja{border-radius:0; max-width:100%; width:100%; height:100%}
+  .lupa-caja img{max-height:calc(100vh - 150px)}
+}

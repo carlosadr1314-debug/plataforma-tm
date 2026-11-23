@@ -56,6 +56,7 @@ const esMapaSku = (v: unknown): v is Record<string, number | boolean> =>
 type Foto = {
   id: string; storage_path: string; bytes: number | null
   lat: number | null; lng: number | null; tomada_en: string | null
+  pregunta: { texto: string } | null
   url?: string | null
 }
 
@@ -95,6 +96,7 @@ export default function Visitas() {
   const [opciones, setOpciones] = useState<Record<string, string>>({})
   const [skus, setSkus] = useState<Record<string, string>>({})
   const [fotos, setFotos] = useState<Foto[]>([])
+  const [verFoto, setVerFoto] = useState<Foto | null>(null)
   const [cargandoDet, setCargandoDet] = useState(false)
 
   const cargar = useCallback(async () => {
@@ -161,7 +163,7 @@ export default function Visitas() {
     }
 
     const { data: ev } = await supabase.from('evidencia')
-      .select('id,storage_path,bytes,lat,lng,tomada_en')
+      .select('id,storage_path,bytes,lat,lng,tomada_en,pregunta:pregunta_id(texto)')
       .eq('visita_id', v.id).order('tomada_en')
     const archivos = ((ev as any) ?? []) as Foto[]
 
@@ -446,12 +448,19 @@ export default function Visitas() {
                     <h4>Evidencia fotográfica · {fotos.length}</h4>
                     <div className="fotos-det">
                       {fotos.map(f => (
-                        <div className="foto-t" key={f.id}>
-                          {f.url
-                            ? <img src={f.url} alt="Evidencia de la visita" />
-                            : <span>{kb(f.bytes)}<br />{hhmm(f.tomada_en)}</span>}
-                          {f.url && <b>{hhmm(f.tomada_en)}</b>}
-                        </div>
+                        f.url ? (
+                          <button className="foto-t" key={f.id} type="button"
+                                  onClick={() => setVerFoto(f)}
+                                  title={f.pregunta?.texto ?? 'Evidencia de la visita'}
+                                  aria-label={`Ampliar la evidencia de: ${f.pregunta?.texto ?? 'la visita'}`}>
+                            <img src={f.url} alt={f.pregunta?.texto ?? 'Evidencia de la visita'} />
+                            <b>{hhmm(f.tomada_en)}</b>
+                          </button>
+                        ) : (
+                          <div className="foto-t" key={f.id}>
+                            <span>{kb(f.bytes)}<br />{hhmm(f.tomada_en)}</span>
+                          </div>
+                        )
                       ))}
                     </div>
                     {fotos.every(f => !f.url) && (
@@ -470,6 +479,57 @@ export default function Visitas() {
           </div>
         </>
       ) })()}
+
+      {verFoto && <Ampliada foto={verFoto} onCerrar={() => setVerFoto(null)} />}
     </>
+  )
+}
+
+// ---------------------------------------------------------------------
+
+/**
+ * La evidencia en grande. Una miniatura de 90 px sirve para saber que
+ * hay foto; no sirve para ver si el precio del anaquel es el pactado
+ * ni si la cenefa esta puesta, que es para lo que se pide la foto.
+ *
+ * Encima va de que pregunta salio: sin eso, ocho fotos de un anaquel
+ * son ocho fotos de un anaquel.
+ */
+function Ampliada({ foto, onCerrar }: { foto: Foto; onCerrar: () => void }) {
+  useEffect(() => {
+    const alTeclear = (e: KeyboardEvent) => { if (e.key === 'Escape') onCerrar() }
+    window.addEventListener('keydown', alTeclear)
+    // El fondo no se desplaza mientras esto esta encima.
+    const antes = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      window.removeEventListener('keydown', alTeclear)
+      document.body.style.overflow = antes
+    }
+  }, [onCerrar])
+
+  const coords = foto.lat != null && foto.lng != null
+    ? `${foto.lat.toFixed(5)}, ${foto.lng.toFixed(5)}`
+    : null
+
+  return (
+    <div className="lupa" role="dialog" aria-modal="true"
+         aria-label={foto.pregunta?.texto ?? 'Evidencia de la visita'}
+         onClick={onCerrar}>
+      <div className="lupa-caja" onClick={e => e.stopPropagation()}>
+        <div className="lupa-cabeza">
+          <div>
+            <h4>{foto.pregunta?.texto ?? 'Evidencia de la visita'}</h4>
+            <p>
+              {hhmm(foto.tomada_en)} · {kb(foto.bytes)}
+              {coords && <> · <span className="cifras">{coords}</span></>}
+            </p>
+          </div>
+          <button type="button" className="lupa-x" onClick={onCerrar}
+                  aria-label="Cerrar la foto">×</button>
+        </div>
+        <img src={foto.url ?? ''} alt={foto.pregunta?.texto ?? 'Evidencia de la visita'} />
+      </div>
+    </div>
   )
 }
