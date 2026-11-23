@@ -329,7 +329,7 @@ tr.clic.on td{background:var(--azul-claro)}
 .seg-vacio p{margin:0; font-size:13.5px; line-height:1.5; color:var(--tinta-2)}
 
 .seg-lienzo{
-  position:relative; border:1px solid var(--borde);
+  position:relative; z-index:0; border:1px solid var(--borde);
   border-radius:var(--r); overflow:hidden; min-height:540px;
 }
 .seg-mapa{position:absolute; inset:0}
@@ -519,7 +519,11 @@ tr.clic.on td{background:var(--azul-claro)}
   border:2.5px solid #fff;box-shadow:0 1px 4px rgba(28,26,23,.45);
 }
 .pdv-pin.on{background:var(--naranja);width:17px;height:17px;margin:-1.5px}
-.leaflet-container{font:inherit}
+/* Leaflet pinta sus capas entre 400 y 1000, y el panel lateral esta en
+   41: sin esto el mapa se le encima y tapa el formulario. Con
+   position:relative y z-index:0 el mapa arma su propia pila y todo lo
+   que dibuja adentro se queda adentro. */
+.leaflet-container{font:inherit; position:relative; z-index:0}
 
 tr.fila-pdv{cursor:pointer}
 tr.fila-pdv:hover{background:#FBFAF9}
