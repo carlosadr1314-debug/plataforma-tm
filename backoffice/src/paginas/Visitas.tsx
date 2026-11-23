@@ -49,6 +49,10 @@ type Respuesta = {
   valor_bool: boolean | null; valor_fecha: string | null; valor_opcion: any
   pregunta: { texto: string; tipo: string; orden: number } | null
 }
+// jsonb trae las de opcion como lista y las de por SKU como objeto.
+const esMapaSku = (v: unknown): v is Record<string, number | boolean> =>
+  !!v && typeof v === 'object' && !Array.isArray(v)
+
 type Foto = {
   id: string; storage_path: string; bytes: number | null
   lat: number | null; lng: number | null; tomada_en: string | null
@@ -89,6 +93,7 @@ export default function Visitas() {
   const [sel, setSel] = useState<Parada | null>(null)
   const [respuestas, setRespuestas] = useState<Respuesta[]>([])
   const [opciones, setOpciones] = useState<Record<string, string>>({})
+  const [skus, setSkus] = useState<Record<string, string>>({})
   const [fotos, setFotos] = useState<Foto[]>([])
   const [cargandoDet, setCargandoDet] = useState(false)
 
@@ -135,9 +140,18 @@ export default function Visitas() {
 
     // texto de las opciones elegidas
     const ids: string[] = []
+    const idsSku: string[] = []
     ordenadas.forEach(r => {
       if (Array.isArray(r.valor_opcion)) ids.push(...r.valor_opcion)
+      else if (esMapaSku(r.valor_opcion)) idsSku.push(...Object.keys(r.valor_opcion))
     })
+    if (idsSku.length) {
+      const { data: ps } = await supabase.from('producto')
+        .select('id,nombre').in('id', idsSku)
+      const mapa: Record<string, string> = {}
+      ;(ps ?? []).forEach(x => { mapa[x.id] = x.nombre })
+      setSkus(mapa)
+    }
     if (ids.length) {
       const { data: ops } = await supabase.from('opcion_pregunta')
         .select('id,texto').in('id', ids)
@@ -162,6 +176,32 @@ export default function Visitas() {
     }
     setFotos(archivos)
     setCargandoDet(false)
+  }
+
+  // Una respuesta por SKU llega como { id_producto: valor }: una sola
+  // fila en la base, porque el catalogo del cliente cambia con el
+  // tiempo y una columna por producto no aguantaria.
+  function renglonRespuesta(r: Respuesta) {
+    if (!esMapaSku(r.valor_opcion)) return <div className="r">{textoRespuesta(r)}</div>
+    const m = r.valor_opcion as Record<string, number | boolean>
+    const filas = Object.keys(m)
+    if (filas.length === 0) return <div className="r">—</div>
+    return (
+      <table className="resp-sku">
+        <tbody>
+          {filas.map(id => (
+            <tr key={id}>
+              <td>{skus[id] ?? 'Producto dado de baja'}</td>
+              <td className="num">
+                {r.pregunta?.tipo === 'precio_sku'
+                  ? pesos(Number(m[id]))
+                  : (m[id] ? 'Sí hay' : 'No hay')}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    )
   }
 
   function textoRespuesta(r: Respuesta) {
@@ -395,7 +435,7 @@ export default function Visitas() {
                     {respuestas.map(r => (
                       <div className="resp" key={r.id}>
                         <div className="p">{r.pregunta?.texto}</div>
-                        <div className="r">{textoRespuesta(r)}</div>
+                        {renglonRespuesta(r)}
                       </div>
                     ))}
                   </div>
