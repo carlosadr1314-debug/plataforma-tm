@@ -118,7 +118,14 @@ export default function MapaPdv({ puntos, activo, altura = 360, onMover }: Props
 
     if (ubicados.length === 1) {
       const p = ubicados[0]
-      m.fitBounds(L.circle([p.lat, p.lng], { radius: Math.max(p.radio, 80) * 2.2 }).getBounds())
+      // toBounds es pura cuenta y no necesita mapa. Antes se armaba un
+      // L.circle suelto y se le pedia getBounds(), pero eso por dentro
+      // usa el mapa al que el circulo pertenece, y ese circulo nunca se
+      // agregaba a ninguno: tronaba y se caia la pagina entera. En la
+      // lista no se noto porque con dos o mas tiendas entra por el otro
+      // lado; en el alta siempre hay exactamente una.
+      m.fitBounds(L.latLng(p.lat, p.lng).toBounds(Math.max(p.radio, 80) * 2.2),
+                  { maxZoom: 17 })
     } else {
       m.fitBounds(L.latLngBounds(ubicados.map(p => [p.lat, p.lng] as [number, number])),
                   { padding: [36, 36], maxZoom: 16 })

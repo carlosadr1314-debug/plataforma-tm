@@ -538,3 +538,18 @@ tr.fila-pdv.sin-ubicar:hover{background:none}
    trabajo encima resalten al recorrer la tabla. */
 tr.sin-tocar td{color:var(--tinta-2)}
 tr.sin-tocar td b{color:var(--tinta-2)}
+
+/* ---------- red de seguridad ---------- */
+.tropiezo{
+  max-width:560px; margin:14vh auto; padding:0 20px; text-align:center;
+}
+.tropiezo h2{
+  font-family:'Barlow Condensed',sans-serif; text-transform:uppercase;
+  font-size:26px; font-weight:600; margin:0 0 10px;
+}
+.tropiezo p{margin:0 0 14px; font-size:14.5px; line-height:1.55; color:var(--tinta-2)}
+.tropiezo-detalle{
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12.5px;
+  background:var(--arena); border:1px solid var(--borde); border-radius:8px;
+  padding:10px 12px; text-align:left; word-break:break-word; color:var(--tinta);
+}
