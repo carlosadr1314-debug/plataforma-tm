@@ -233,6 +233,25 @@ begin
   end;
   perform pg_temp.afirmar('El promotor NO puede escribir en el catalogo', not permitido);
 
+  -- "Marca sin asignar" no esta en usuario_cliente de nadie, pero el
+  -- promotor la trae en su ruta de hoy. Si no la ve, la politica del
+  -- bucket le rechaza la evidencia: toma la foto, la foto se queda en
+  -- el telefono y nadie se entera. Es el hueco de la 015.
+  select count(*) into n from clientes_visibles() as cv
+   where cv = 'eeee1111-0000-0000-0000-00000000002b';
+  perform pg_temp.afirmar('El promotor ve el cliente de su propia ruta', n = 1);
+
+  reset role;
+
+  -- Y el de la otra empresa no, aunque tampoco este asignado a nadie.
+  perform set_config('request.jwt.claims',
+    '{"sub":"eeee0000-0000-0000-0000-0000000000c4","role":"authenticated"}', true);
+  set local role authenticated;
+
+  select count(*) into n from clientes_visibles() as cv
+   where cv = 'eeee1111-0000-0000-0000-00000000002b';
+  perform pg_temp.afirmar('El promotor de otra empresa NO lo ve', n = 0);
+
   reset role;
 
   select count(*) into n from perfil
