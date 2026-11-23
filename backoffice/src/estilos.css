@@ -329,7 +329,7 @@ tr.clic.on td{background:var(--azul-claro)}
 .seg-vacio p{margin:0; font-size:13.5px; line-height:1.5; color:var(--tinta-2)}
 
 .seg-lienzo{
-  position:relative; z-index:0; border:1px solid var(--borde);
+  position:relative; isolation:isolate; border:1px solid var(--borde);
   border-radius:var(--r); overflow:hidden; min-height:540px;
 }
 .seg-mapa{position:absolute; inset:0}
@@ -520,10 +520,12 @@ tr.clic.on td{background:var(--azul-claro)}
 }
 .pdv-pin.on{background:var(--naranja);width:17px;height:17px;margin:-1.5px}
 /* Leaflet pinta sus capas entre 400 y 1000, y el panel lateral esta en
-   41: sin esto el mapa se le encima y tapa el formulario. Con
-   position:relative y z-index:0 el mapa arma su propia pila y todo lo
-   que dibuja adentro se queda adentro. */
-.leaflet-container{font:inherit; position:relative; z-index:0}
+   41: sin esto el mapa se le encima y tapa el formulario. isolation
+   arma una pila propia para el mapa —todo lo que dibuja adentro se
+   queda adentro— sin tocarle el position, que cada mapa pone como
+   necesita: .seg-mapa es absolute y al forzarlo a relative se quedaba
+   sin altura y no se veia nada. */
+.leaflet-container{font:inherit; isolation:isolate}
 
 tr.fila-pdv{cursor:pointer}
 tr.fila-pdv:hover{background:#FBFAF9}
