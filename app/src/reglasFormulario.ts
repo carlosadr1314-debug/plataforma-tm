@@ -100,7 +100,15 @@ export function seMuestra(p: Pregunta, respuestas: Respuestas): boolean {
  * auditoria, y es el error mas facil de cometer con el telefono en una
  * mano.
  */
-export function contestada(p: Pregunta, valor: Valor | undefined, skus: string[]): boolean {
+export function contestada(
+  p: Pregunta, valor: Valor | undefined, skus: string[],
+  fotos: Record<string, number> = {},
+): boolean {
+  // Las fotos no viven en respuesta sino en evidencia, cada una su
+  // propio renglon: una pregunta de foto puede llevar varias. Lo que
+  // cuenta aqui es si ya hay al menos una, tomada o subida.
+  if (p.tipo === 'foto') return (fotos[p.id] ?? 0) > 0
+
   if (p.tipo === 'precio_sku' || p.tipo === 'existencia_sku') {
     if (skus.length === 0) return true          // cliente sin catalogo
     const m = (valor ?? {}) as Record<string, unknown>
@@ -114,9 +122,11 @@ export function contestada(p: Pregunta, valor: Valor | undefined, skus: string[]
 /** Las que faltan para poder cerrar la visita. */
 export function pendientes(
   preguntas: Pregunta[], respuestas: Respuestas, skus: string[],
+  fotos: Record<string, number> = {},
 ): Pregunta[] {
   return preguntas.filter(p =>
-    p.obligatoria && seMuestra(p, respuestas) && !contestada(p, respuestas[p.id], skus))
+    p.obligatoria && seMuestra(p, respuestas) &&
+    !contestada(p, respuestas[p.id], skus, fotos))
 }
 
 /** Lo que va a cada columna de la tabla respuesta, segun el tipo. */
@@ -151,5 +161,5 @@ export function filaDeRespuesta(p: Pregunta, valor: Valor) {
 }
 
 /** Los tipos que la aplicacion todavia no sabe capturar. */
-export const SIN_SOPORTE: TipoPregunta[] = ['foto', 'firma', 'codigo_barras']
+export const SIN_SOPORTE: TipoPregunta[] = ['firma', 'codigo_barras']
 export const soportada = (t: TipoPregunta) => !SIN_SOPORTE.includes(t)

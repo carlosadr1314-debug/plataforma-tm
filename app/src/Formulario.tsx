@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   View, Text, TextInput, Pressable, StyleSheet, ScrollView, ActivityIndicator,
+  Image, Alert,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import {
@@ -11,6 +12,7 @@ import {
   seMuestra, pendientes as faltantes, soportada,
   type Pregunta, type Respuestas, type Valor,
 } from './reglasFormulario'
+import { tomarFoto, fotosDe, descartarFoto, type FotoPendiente } from './fotos'
 import { c, f, CIFRAS, TOCABLE } from './tema'
 
 // =====================================================================
@@ -39,6 +41,9 @@ export default function Formulario({ itinerarioId, formularioId, clienteId, onCe
   const [respuestas, setRespuestas] = useState<Respuestas>({})
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')
+  // Las fotos no viven en respuestas: son archivos con su propia cola.
+  const [fotos, setFotos] = useState<FotoPendiente[]>([])
+  const [tomando, setTomando] = useState(false)
 
   useEffect(() => {
     let vivo = true
@@ -47,6 +52,9 @@ export default function Formulario({ itinerarioId, formularioId, clienteId, onCe
       // bajada refresca despues, por si la oficina movio el formulario.
       const guardado = await formularioGuardado(formularioId)
       if (vivo && guardado) setDatos(guardado)
+
+      const yaTomadas = await fotosDe(itinerarioId)
+      if (vivo) setFotos(yaTomadas)
 
       const previas = await respuestasGuardadas(itinerarioId)
       if (vivo) {
@@ -74,7 +82,37 @@ export default function Formulario({ itinerarioId, formularioId, clienteId, onCe
   const preguntas = datos?.preguntas ?? []
   const skus = datos?.skus ?? []
   const idsSku = useMemo(() => skus.map(s => s.id), [skus])
-  const faltan = faltantes(preguntas, respuestas, idsSku)
+  // Cuantas evidencias hay por pregunta: es lo que decide si una
+  // pregunta de foto ya quedo cubierta.
+  const porPregunta = useMemo(() => {
+    const m: Record<string, number> = {}
+    fotos.forEach(f2 => { if (f2.pregunta_id) m[f2.pregunta_id] = (m[f2.pregunta_id] ?? 0) + 1 })
+    return m
+  }, [fotos])
+  const faltan = faltantes(preguntas, respuestas, idsSku, porPregunta)
+
+  async function capturar(p: Pregunta) {
+    if (tomando) return
+    setTomando(true)
+    const r = await tomarFoto({ itinerarioId, preguntaId: p.id, clienteId })
+    setTomando(false)
+    if (r.ok) {
+      setFotos(await fotosDe(itinerarioId))
+      sincronizar().catch(() => {})
+      return
+    }
+    if (!r.cancelada) Alert.alert('No se pudo tomar la foto', r.error)
+  }
+
+  function quitar(foto: FotoPendiente) {
+    Alert.alert('Quitar esta foto', '¿Seguro? No se puede recuperar.', [
+      { text: 'Conservarla', style: 'cancel' },
+      { text: 'Quitarla', style: 'destructive', onPress: async () => {
+        await descartarFoto(foto.id)
+        setFotos(await fotosDe(itinerarioId))
+      } },
+    ])
+  }
 
   function responder(p: Pregunta, valor: Valor) {
     setRespuestas(r => ({ ...r, [p.id]: valor }))
@@ -132,6 +170,10 @@ export default function Formulario({ itinerarioId, formularioId, clienteId, onCe
               {visibles.map(p => (
                 <Campo key={p.id} pregunta={p} valor={respuestas[p.id]} skus={skus}
                        falta={faltan.some(x => x.id === p.id)}
+                       fotos={fotos.filter(x => x.pregunta_id === p.id)}
+                       tomando={tomando}
+                       onFoto={() => capturar(p)}
+                       onQuitarFoto={quitar}
                        onCambio={v => responder(p, v)} />
               ))}
             </View>
@@ -149,9 +191,61 @@ export default function Formulario({ itinerarioId, formularioId, clienteId, onCe
 
 // ---------------------------------------------------------------------
 
-function Campo({ pregunta, valor, skus, falta, onCambio }: {
+/**
+ * Las fotos de una pregunta. Se ven en miniatura porque el promotor
+ * tiene que poder notar que salio movida o que agarro el anaquel
+ * equivocado: una lista de "foto 1, foto 2" no sirve para eso.
+ *
+ * La marca de "en el teléfono" es a proposito. Mientras la foto no
+ * haya salido, el promotor debe saberlo; terminar la jornada creyendo
+ * que todo se entrego es el error que no se puede deshacer.
+ */
+function Fotos({ fotos, tomando, onFoto, onQuitar }: {
+  fotos: FotoPendiente[]; tomando: boolean
+  onFoto: () => void; onQuitar: (f: FotoPendiente) => void
+}) {
+  return (
+    <View>
+      {fotos.length > 0 && (
+        <View style={s.tiras}>
+          {fotos.map(f2 => (
+            <Pressable key={f2.id} onLongPress={() => onQuitar(f2)} style={s.tira}
+                       accessibilityRole="imagebutton"
+                       accessibilityLabel="Foto tomada. Mantén presionado para quitarla.">
+              <Image source={{ uri: f2.archivo }} style={s.tiraImagen} />
+              <Text style={s.tiraPie}>En el teléfono</Text>
+            </Pressable>
+          ))}
+        </View>
+      )}
+
+      <Pressable onPress={onFoto} disabled={tomando}
+                 style={({ pressed }) => [s.camara, pressed && s.camaraTocada,
+                                          tomando && s.camaraApagada]}
+                 accessibilityRole="button"
+                 accessibilityLabel={fotos.length ? 'Tomar otra foto' : 'Tomar foto'}>
+        <Text style={s.camaraTexto}>
+          {tomando ? 'Abriendo la cámara…' : fotos.length ? 'TOMAR OTRA' : 'TOMAR FOTO'}
+        </Text>
+      </Pressable>
+
+      {fotos.length > 0 && (
+        <Text style={s.tiraNota}>
+          Mantén presionada una foto para quitarla.
+        </Text>
+      )}
+    </View>
+  )
+}
+
+// ---------------------------------------------------------------------
+
+function Campo({ pregunta, valor, skus, falta, fotos, tomando,
+                 onFoto, onQuitarFoto, onCambio }: {
   pregunta: Pregunta; valor: Valor | undefined; skus: Sku[]
-  falta: boolean; onCambio: (v: Valor) => void
+  falta: boolean; fotos: FotoPendiente[]; tomando: boolean
+  onFoto: () => void; onQuitarFoto: (f: FotoPendiente) => void
+  onCambio: (v: Valor) => void
 }) {
   const p = pregunta
   return (
@@ -163,10 +257,11 @@ function Campo({ pregunta, valor, skus, falta, onCambio }: {
 
       {!soportada(p.tipo) ? (
         <Text style={s.sinSoporte}>
-          {p.tipo === 'foto' ? 'Las fotografías se capturan en la siguiente versión.'
-            : p.tipo === 'firma' ? 'La firma se captura en la siguiente versión.'
+          {p.tipo === 'firma' ? 'La firma se captura en la siguiente versión.'
             : 'El lector de código de barras se agrega en la siguiente versión.'}
         </Text>
+      ) : p.tipo === 'foto' ? (
+        <Fotos fotos={fotos} tomando={tomando} onFoto={onFoto} onQuitar={onQuitarFoto} />
       ) : p.tipo === 'booleano' ? (
         <View style={s.dosBotones}>
           <Opcion texto="SÍ" activo={valor === true} onPress={() => onCambio(true)} />
@@ -306,6 +401,20 @@ const s = StyleSheet.create({
   campoFalta: { borderLeftWidth: 4, borderLeftColor: c.naranja },
   pregunta: { fontFamily: f.textoMedio, fontSize: 15.5, color: c.tinta, lineHeight: 21 },
   obligatoria: { color: c.naranjaTexto, fontFamily: f.textoFuerte },
+  tiras: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 },
+  tira: { width: 92, borderRadius: 9, overflow: 'hidden',
+          borderWidth: 1, borderColor: c.borde, backgroundColor: c.arena },
+  tiraImagen: { width: '100%', height: 92 },
+  tiraPie: { fontFamily: f.texto, fontSize: 10.5, color: c.neutroTexto,
+             textAlign: 'center', paddingVertical: 3 },
+  tiraNota: { fontFamily: f.texto, fontSize: 11.5, color: c.tinta2, marginTop: 6 },
+  camara: { minHeight: TOCABLE, borderRadius: 10, borderWidth: 1.5,
+            borderColor: c.azul, alignItems: 'center', justifyContent: 'center',
+            paddingHorizontal: 16 },
+  camaraTocada: { backgroundColor: c.arena },
+  camaraApagada: { opacity: 0.55 },
+  camaraTexto: { fontFamily: f.displaySemi, fontSize: 15, fontWeight: '600',
+                 color: c.azul, letterSpacing: 0.3 },
   sinSoporte: { fontFamily: f.texto, fontSize: 13, color: c.neutroTexto,
     backgroundColor: c.neutroSuave, borderRadius: 8, padding: 10, lineHeight: 18 },
 

@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { supabase } from './supabase'
+import { subirFotos } from './fotos'
 import { filaDeRespuesta, type Pregunta, type Valor } from './reglasFormulario'
 
 // =====================================================================
@@ -256,8 +257,21 @@ export function sincronizar(): Promise<number> {
 
     await guardarJson(LLAVE_PENDIENTES, visitas)
     await guardarJson(LLAVE_RESPUESTAS, respuestas)
-    return Object.keys(visitas).length + Object.keys(respuestas).length
+
+    // Las fotos al final y nunca antes: la ruta dentro del bucket
+    // lleva el id de la visita, asi que primero tiene que existir la
+    // visita. Si algo trueno arriba, las fotos esperan a la proxima.
+    let fotos = 0
+    try { fotos = await subirFotos() } catch { fotos = await cuantasFotos() }
+
+    return Object.keys(visitas).length + Object.keys(respuestas).length + fotos
   })
+}
+
+// Si la subida ni siquiera pudo correr, lo pendiente sigue pendiente:
+// el contador no debe decir cero.
+async function cuantasFotos() {
+  try { return (await import('./fotos')).cuantasFotosFaltan() } catch { return 0 }
 }
 
 // supabase-js no distingue "no hubo red" de "el servidor dijo que no",

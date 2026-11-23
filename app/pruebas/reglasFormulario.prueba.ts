@@ -68,6 +68,19 @@ afirmar('por SKU: media tabla no alcanza',
 afirmar('por SKU: con todos, si', contestada(porSku, { s1: true, s2: false }, ['s1', 's2']))
 afirmar('un cliente sin catalogo no bloquea', contestada(porSku, undefined, []))
 
+console.log('--- las de foto cuentan evidencia, no respuesta ---')
+const foto = q({ id: 'f1', tipo: 'foto', obligatoria: true })
+afirmar('sin fotos, no esta contestada',
+        !contestada(foto, undefined, [], {}))
+afirmar('con una foto, si',
+        contestada(foto, undefined, [], { f1: 1 }))
+afirmar('la foto de OTRA pregunta no la cuenta',
+        !contestada(foto, undefined, [], { f9: 3 }))
+afirmar('una foto obligatoria sin tomar bloquea el cierre',
+        pendientes([foto], {}, [], {}).length === 1)
+afirmar('tomada, ya no bloquea',
+        pendientes([foto], {}, [], { f1: 1 }).length === 0)
+
 console.log('--- lo que falta para cerrar ---')
 const form: Pregunta[] = [
   q({ id: 'p1', tipo: 'booleano', obligatoria: true }),

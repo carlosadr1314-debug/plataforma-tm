@@ -19,7 +19,8 @@
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "ACCESS_COARSE_LOCATION",
-        "ACCESS_FINE_LOCATION"
+        "ACCESS_FINE_LOCATION",
+        "CAMERA"
       ]
     },
     "web": {
@@ -32,6 +33,13 @@
         {
           "locationAlwaysAndWhenInUsePermission": "Plataforma TM usa tu ubicación mientras tienes la jornada abierta, para que tu supervisor sepa por dónde vas en la ruta.",
           "locationWhenInUsePermission": "Plataforma TM usa tu ubicación mientras tienes la jornada abierta, para que tu supervisor sepa por dónde vas en la ruta."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Plataforma TM usa la cámara para la evidencia fotográfica de cada visita.",
+          "photosPermission": "Plataforma TM no usa tus fotos guardadas; solo las que tomas durante la visita."
         }
       ]
     ]
