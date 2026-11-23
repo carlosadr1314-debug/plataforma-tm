@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { supabase } from './supabase'
-import { subirFotos } from './fotos'
+import { subirFotos, cuantasFotosFaltan } from './fotos'
 import { filaDeRespuesta, type Pregunta, type Valor } from './reglasFormulario'
 
 // =====================================================================
@@ -32,6 +32,11 @@ import { filaDeRespuesta, type Pregunta, type Valor } from './reglasFormulario'
 const LLAVE_RUTA = 'tm.ruta'
 const LLAVE_PENDIENTES = 'tm.visitas.pendientes'
 const LLAVE_RESPUESTAS = 'tm.respuestas.pendientes'
+// Lo capturado, aparte de lo que falta por mandar. Son dos cosas
+// distintas y confundirlas fue un error caro: al sincronizar se vacia
+// la lista de pendientes, y si la pantalla leyera de ahi, el
+// formulario se veria vacio justo despues de guardarse bien.
+const LLAVE_RESP_ESTADO = 'tm.respuestas.estado'
 const LLAVE_FORMULARIOS = 'tm.formularios'
 const LLAVE_NOMBRE = 'tm.nombre'
 
@@ -180,9 +185,13 @@ export async function bajarFormulario(
 // Las respuestas del formulario
 // ---------------------------------------------------------------------
 
+/**
+ * Lo capturado de esa visita, haya salido o no. Lee del estado, nunca
+ * de la lista de pendientes: lo entregado sigue siendo lo contestado.
+ */
 export function respuestasGuardadas(itinerarioId: string) {
   return enFila(async () => {
-    const r = await leerJson<RespuestasPorVisita>(LLAVE_RESPUESTAS, {})
+    const r = await leerJson<RespuestasPorVisita>(LLAVE_RESP_ESTADO, {})
     return r[itinerarioId] ?? {}
   })
 }
@@ -196,9 +205,25 @@ export function apuntarRespuestas(
   itinerarioId: string, nuevas: Record<string, RespuestaLocal>,
 ) {
   return enFila(async () => {
+    // El estado: lo que el promotor contesto. Esto no se borra al
+    // sincronizar, porque sigue siendo cierto despues de mandarlo.
+    const e = await leerJson<RespuestasPorVisita>(LLAVE_RESP_ESTADO, {})
+    e[itinerarioId] = { ...(e[itinerarioId] ?? {}), ...nuevas }
+    await guardarJson(LLAVE_RESP_ESTADO, e)
+
+    // Y la lista de lo que falta por mandar, que si se vacia.
     const r = await leerJson<RespuestasPorVisita>(LLAVE_RESPUESTAS, {})
     r[itinerarioId] = { ...(r[itinerarioId] ?? {}), ...nuevas }
     await guardarJson(LLAVE_RESPUESTAS, r)
+  })
+}
+
+/** Al cerrar la visita ya no hace falta cargar con lo capturado. */
+export function olvidarRespuestas(itinerarioId: string) {
+  return enFila(async () => {
+    const e = await leerJson<RespuestasPorVisita>(LLAVE_RESP_ESTADO, {})
+    delete e[itinerarioId]
+    await guardarJson(LLAVE_RESP_ESTADO, e)
   })
 }
 
@@ -207,7 +232,7 @@ export function apuntarRespuestas(
  * salir: cero significa que todo llego.
  */
 export function sincronizar(): Promise<number> {
-  return enFila(async () => {
+  const faltan = enFila(async () => {
     const visitas = await leerJson<Pendientes>(LLAVE_PENDIENTES, {})
     const respuestas = await leerJson<RespuestasPorVisita>(LLAVE_RESPUESTAS, {})
 
@@ -258,20 +283,18 @@ export function sincronizar(): Promise<number> {
     await guardarJson(LLAVE_PENDIENTES, visitas)
     await guardarJson(LLAVE_RESPUESTAS, respuestas)
 
-    // Las fotos al final y nunca antes: la ruta dentro del bucket
-    // lleva el id de la visita, asi que primero tiene que existir la
-    // visita. Si algo trueno arriba, las fotos esperan a la proxima.
-    let fotos = 0
-    try { fotos = await subirFotos() } catch { fotos = await cuantasFotos() }
-
-    return Object.keys(visitas).length + Object.keys(respuestas).length + fotos
+    return Object.keys(visitas).length + Object.keys(respuestas).length
   })
-}
-
-// Si la subida ni siquiera pudo correr, lo pendiente sigue pendiente:
-// el contador no debe decir cero.
-async function cuantasFotos() {
-  try { return (await import('./fotos')).cuantasFotosFaltan() } catch { return 0 }
+  // Las fotos van DESPUES y fuera del candado, por dos razones. Una:
+  // la ruta dentro del bucket lleva el id de la visita, asi que la
+  // visita tiene que existir primero. Dos: subir una foto tarda, y
+  // adentro del candado dejaba esperando a cualquier guardado de la
+  // pantalla —el boton de terminar visita se quedaba girando.
+  return faltan.then(async n => {
+    let fotos = 0
+    try { fotos = await subirFotos() } catch { fotos = await cuantasFotosFaltan() }
+    return n + fotos
+  })
 }
 
 // supabase-js no distingue "no hubo red" de "el servidor dijo que no",

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   View, Text, TextInput, Pressable, StyleSheet, ScrollView, ActivityIndicator,
   Image, Alert,
@@ -28,6 +28,9 @@ import { c, f, CIFRAS, TOCABLE } from './tema'
 // porque el promotor recorre la tienda por zonas, no por numero de
 // pregunta.
 // =====================================================================
+
+/** Lo que se espera a que el promotor deje de teclear antes de mandar. */
+const ESPERA_ENVIO_MS = 1500
 
 type Props = {
   itinerarioId: string
@@ -98,6 +101,9 @@ export default function Formulario({ itinerarioId, formularioId, clienteId, onCe
     setTomando(false)
     if (r.ok) {
       setFotos(await fotosDe(itinerarioId))
+      // La foto si sale de inmediato: pesa, y mientras mas pronto
+      // empiece, mas probable es que termine antes de salir de la
+      // tienda.
       sincronizar().catch(() => {})
       return
     }
@@ -114,10 +120,30 @@ export default function Formulario({ itinerarioId, formularioId, clienteId, onCe
     ])
   }
 
+  // Guardar en el telefono va en cada cambio: es instantaneo y es lo
+  // que protege al promotor si la aplicacion se muere. Mandar al
+  // servidor no: escribir "Okey" son cuatro teclas y eran cuatro
+  // viajes a la red, con la pantalla peleandose con ellos.
+  const porMandar = useRef<ReturnType<typeof setTimeout> | null>(null)
+  function mandarPronto() {
+    if (porMandar.current) clearTimeout(porMandar.current)
+    porMandar.current = setTimeout(() => {
+      porMandar.current = null
+      sincronizar().catch(() => {})
+    }, ESPERA_ENVIO_MS)
+  }
+  // Al salir del formulario se manda lo que quedara en el aire.
+  useEffect(() => () => {
+    if (porMandar.current) {
+      clearTimeout(porMandar.current)
+      sincronizar().catch(() => {})
+    }
+  }, [])
+
   function responder(p: Pregunta, valor: Valor) {
     setRespuestas(r => ({ ...r, [p.id]: valor }))
     apuntarRespuestas(itinerarioId, { [p.id]: { tipo: p.tipo, valor } })
-      .then(() => { sincronizar().catch(() => {}) })
+      .then(mandarPronto)
       .catch(() => {})
   }
 

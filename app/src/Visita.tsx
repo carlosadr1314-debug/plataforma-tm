@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import * as Location from 'expo-location'
 import { apuntar, sincronizar, formularioGuardado, respuestasGuardadas } from './sinSenal'
 import { pendientes as faltantes } from './reglasFormulario'
+import { fotosDe, olvidarFotosDe } from './fotos'
 import Formulario from './Formulario'
 import { zonaDeCheckin, TOLERANCIA_M } from './radio'
 import { c, f, CIFRAS, TOCABLE } from './tema'
@@ -133,10 +134,16 @@ export default function Visita({ parada, onCerrar, onCambio }: {
     ;(async () => {
       const datos = await formularioGuardado(formularioId)
       const previas = await respuestasGuardadas(parada.id)
+      // Las fotos se cuentan aparte: no viven en respuestas. Sin esto
+      // la pantalla decia "faltan 8" mientras el formulario decia
+      // "completo", y la visita no se dejaba cerrar.
+      const fotos = await fotosDe(parada.id)
       if (!vivo || !datos) { if (vivo) setFaltan(null); return }
       const r: Record<string, any> = {}
       Object.entries(previas).forEach(([k, v]) => { r[k] = v.valor })
-      setFaltan(faltantes(datos.preguntas, r, datos.skus.map(k => k.id)).length)
+      const porPregunta: Record<string, number> = {}
+      fotos.forEach(f => { if (f.pregunta_id) porPregunta[f.pregunta_id] = (porPregunta[f.pregunta_id] ?? 0) + 1 })
+      setFaltan(faltantes(datos.preguntas, r, datos.skus.map(k => k.id), porPregunta).length)
     })()
     return () => { vivo = false }
   }, [formularioId, enFormulario, parada.id])
@@ -226,6 +233,10 @@ export default function Visita({ parada, onCerrar, onCambio }: {
   async function terminar() {
     setError('')
     await guardar({ estado: 'completada', check_out: new Date().toISOString() }, true)
+    // Las fotos ya entregadas sueltan su espacio. Las que todavia no
+    // salen se quedan: la visita esta cerrada aqui, pero la evidencia
+    // sigue debiendose.
+    olvidarFotosDe(parada.id).catch(() => {})
   }
 
   async function marcarNoRealizada() {

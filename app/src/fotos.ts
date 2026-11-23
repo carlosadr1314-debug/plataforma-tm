@@ -50,6 +50,14 @@ export type FotoPendiente = {
   lng: number | null
   tomada_en: string
   intentos: number
+  /**
+   * Si el servidor ya la recibio. El apunte NO se borra al subir: una
+   * foto entregada sigue siendo evidencia tomada, y si desapareciera
+   * de la pantalla el promotor creeria que la perdio —y una pregunta
+   * de foto obligatoria volveria a contar como sin contestar, dejando
+   * la visita sin poder cerrarse.
+   */
+  subida: boolean
 }
 
 type Lista = Record<string, FotoPendiente>
@@ -155,6 +163,7 @@ export async function tomarFoto(datos: {
       lng: datos.lng ?? null,
       tomada_en: new Date().toISOString(),
       intentos: 0,
+      subida: false,
     }
 
     await enFila(async () => {
@@ -192,12 +201,13 @@ export async function fotosDe(itinerarioId: string): Promise<FotoPendiente[]> {
     .sort((a, b) => a.tomada_en.localeCompare(b.tomada_en))
 }
 
-/** Quita una foto que todavia no sale: el promotor la tomo mal. */
+/** Quita una foto que el promotor tomo mal. Si ya subio, se queda: lo
+ *  que esta en el servidor se borra desde la oficina, no desde aqui. */
 export async function descartarFoto(id: string): Promise<void> {
   await enFila(async () => {
     const l = await leer()
     const f = l[id]
-    if (!f) return
+    if (!f || f.subida) return
     try { const a = new File(f.archivo); if (a.exists) a.delete() } catch { /* ya no estaba */ }
     delete l[id]
     await guardar(l)
@@ -223,11 +233,11 @@ export async function descartarFoto(id: string): Promise<void> {
 let subiendo = false
 
 export function subirFotos(): Promise<number> {
-  if (subiendo) return fotosPendientes().then(l => Object.keys(l).length)
+  if (subiendo) return cuantasFotosFaltan()
   subiendo = true
   return enFila(async () => {
     const l = await leer()
-    const ids = Object.keys(l)
+    const ids = Object.keys(l).filter(k => !l[k].subida)
     if (ids.length === 0) return 0
 
     // La empresa es la misma para toda la corrida y la ruta dentro del
@@ -253,8 +263,8 @@ export function subirFotos(): Promise<number> {
 
       const archivo = new File(f.archivo)
       if (!archivo.exists) {
-        // El sistema limpio el archivo pese a todo. Dejar el apunte
-        // solo serviria para reintentar algo que ya no existe.
+        // El sistema limpio el archivo pese a todo. Reintentar algo
+        // que ya no existe no lleva a ningun lado.
         delete l[id]
         continue
       }
@@ -266,7 +276,7 @@ export function subirFotos(): Promise<number> {
       if (f.intentos > 0) {
         const { data: ya } = await supabase.from('evidencia')
           .select('id').eq('storage_path', ruta).maybeSingle()
-        if (ya) { await limpiar(l, id, archivo); continue }
+        if (ya) { f.subida = true; continue }
       }
 
       f.intentos += 1
@@ -302,12 +312,35 @@ export function subirFotos(): Promise<number> {
         continue
       }
 
-      await limpiar(l, id, archivo)
+      // No se borra el apunte: se marca. Una foto entregada sigue
+      // siendo evidencia tomada, y si desapareciera de la pantalla el
+      // promotor creeria que la perdio. Peor: una pregunta de foto
+      // obligatoria volveria a contar como sin contestar y la visita
+      // se quedaria sin poder cerrarse.
+      f.subida = true
     }
 
     await guardar(l)
-    return Object.keys(l).length
+    return Object.values(l).filter(x => !x.subida).length
   }).finally(() => { subiendo = false })
+}
+
+/**
+ * Se tira lo de una visita ya cerrada: los archivos ya entregados y
+ * sus apuntes. Hasta ese momento la foto se queda en el telefono
+ * aunque ya haya subido, para que el promotor la siga viendo mientras
+ * trabaja esa visita.
+ */
+export function olvidarFotosDe(itinerarioId: string): Promise<void> {
+  return enFila(async () => {
+    const l = await leer()
+    for (const [id, f] of Object.entries(l)) {
+      if (f.itinerario_id !== itinerarioId || !f.subida) continue
+      try { const a = new File(f.archivo); if (a.exists) a.delete() } catch { /* ya no estaba */ }
+      delete l[id]
+    }
+    await guardar(l)
+  })
 }
 
 const LLAVE_ORG = 'tm.organizacion'
@@ -330,11 +363,6 @@ async function miOrganizacion(): Promise<string | null> {
   return org
 }
 
-async function limpiar(l: Lista, id: string, archivo: File) {
-  try { if (archivo.exists) archivo.delete() } catch { /* se queda ocupando, ni modo */ }
-  delete l[id]
-}
-
 // Igual que en sinSenal: supabase-js no distingue "no hubo red" de "el
 // servidor dijo que no". Ante la duda se reintenta, porque perder una
 // foto es peor que intentarlo de mas.
@@ -352,5 +380,6 @@ function esDeRed(error: { message?: string; statusCode?: string }) {
  * jornada creyendo que todo salio.
  */
 export async function cuantasFotosFaltan(): Promise<number> {
-  return Object.keys(await fotosPendientes()).length
+  const l = await fotosPendientes()
+  return Object.values(l).filter(f => !f.subida).length
 }

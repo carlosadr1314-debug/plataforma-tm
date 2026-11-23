@@ -2,7 +2,7 @@
 // No necesita instalar nada: Node 22 ejecuta TypeScript por si mismo.
 
 import { apuntar, pendientes, sincronizar, guardarRuta, rutaGuardada,
-         apuntarRespuestas, respuestasGuardadas } from '../src/sinSenal.ts'
+         apuntarRespuestas, respuestasGuardadas, olvidarRespuestas } from '../src/sinSenal.ts'
 import { estado } from './dobles/supabase.mjs'
 
 let ok = 0, mal = 0
@@ -69,6 +69,22 @@ function afirmar(que: string, cierto: boolean) {
           estado.respuestas.find(r => r.pregunta_id === 'p1')?.valor_bool === true)
   afirmar('el numero en la suya',
           estado.respuestas.find(r => r.pregunta_id === 'p2')?.valor_numero === 28.5)
+
+  // Lo que fallo en el telefono de verdad: al sincronizar se vacia la
+  // lista de pendientes, y el formulario leia de ahi. El promotor
+  // contestaba veinticinco preguntas, se guardaban bien, volvia a
+  // entrar y la pantalla estaba en blanco: lo entregado se veia como
+  // nunca capturado y la visita no se podia cerrar.
+  console.log('--- lo entregado sigue siendo lo contestado ---')
+  rs = await respuestasGuardadas('it-9')
+  afirmar('despues de mandarlas, el formulario las SIGUE viendo',
+          Object.keys(rs).length === 2)
+  afirmar('con su valor intacto', rs.p2?.valor === 28.5)
+  afirmar('y ya no hay nada pendiente de mandar', (await sincronizar()) === 0)
+
+  await olvidarRespuestas('it-9')
+  afirmar('al cerrar la visita si se sueltan',
+          Object.keys(await respuestasGuardadas('it-9')).length === 0)
 
   console.log('--- la ruta guardada es solo la de hoy ---')
   estado.falla = null

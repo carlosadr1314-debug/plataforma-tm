@@ -5,7 +5,7 @@
 // la tienda.
 
 import { tomarFoto, fotosPendientes, fotosDe, descartarFoto,
-         subirFotos, cuantasFotosFaltan } from '../src/fotos.ts'
+         subirFotos, cuantasFotosFaltan, olvidarFotosDe } from '../src/fotos.ts'
 import { estado, reiniciar } from './dobles/supabase.mjs'
 import { _ponerFoto, _archivos, File } from './dobles/expo.mjs'
 
@@ -65,7 +65,22 @@ function hayCamara() {
           estado.subidas[0].ruta === `org-1/cli-1/vis-7/${id}.jpg`)
   afirmar('se escribio el renglon de evidencia', estado.evidencias.length === 1)
   afirmar('el renglon apunta a la pregunta', estado.evidencias[0].pregunta_id === 'p-1')
-  afirmar('el archivo ya se borro del telefono', !new File(`mem://doc/evidencia/${id}.jpg`).exists)
+
+  // Lo que fallo en el telefono de verdad: al subir, la foto
+  // desaparecia de la pantalla, la pregunta obligatoria volvia a
+  // contar como sin contestar y la visita no se podia cerrar.
+  afirmar('despues de subir, la foto SIGUE a la vista',
+          (await fotosDe('it-7')).length === 1)
+  afirmar('y queda marcada como entregada',
+          (await fotosDe('it-7'))[0].subida === true)
+  afirmar('el archivo sigue en el telefono para poder verla',
+          new File(`mem://doc/evidencia/${id}.jpg`).exists)
+  afirmar('ya no cuenta como pendiente de mandar', (await cuantasFotosFaltan()) === 0)
+
+  console.log('--- al cerrar la visita si se suelta el espacio ---')
+  await olvidarFotosDe('it-7')
+  afirmar('se fue de la lista', (await fotosDe('it-7')).length === 0)
+  afirmar('y el archivo tambien', !new File(`mem://doc/evidencia/${id}.jpg`).exists)
 
   console.log('--- si no hay red, se conserva ---')
   reiniciar()
@@ -83,9 +98,12 @@ function hayCamara() {
   estado.fallaSubida = null
   quedan = await subirFotos()
   afirmar('ahora si llega', quedan === 0 && estado.evidencias.length === 1)
+  afirmar('sin perderla de vista', (await fotosDe('it-7')).length >= 1)
+  await olvidarFotosDe('it-7')
 
   console.log('--- un reintento no la sube dos veces ---')
   reiniciar()
+  await olvidarFotosDe('it-7')
   hayCamara()
   const r3 = await tomarFoto(DATOS)
   estado.visitaPorItinerario['it-7'] = 'vis-7'
@@ -96,9 +114,11 @@ function hayCamara() {
   estado.evidencias.push({ storage_path: `org-1/cli-1/vis-7/${r3.ok ? r3.foto.id : ''}.jpg` })
   quedan = await subirFotos()
   afirmar('se da por entregada sin duplicar', quedan === 0 && estado.evidencias.length === 1)
+  afirmar('y no se reenvio el archivo', estado.subidas.length === 0)
 
   console.log('--- descartar una mal tomada ---')
   reiniciar()
+  await olvidarFotosDe('it-7')
   hayCamara()
   const r4 = await tomarFoto(DATOS)
   const id4 = r4.ok ? r4.foto.id : ''
