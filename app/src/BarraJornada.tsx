@@ -8,6 +8,7 @@ import {
   horarioDeHoy, limiteCheckIn, efectivas, enHoras, hhmm, ANTICIPACION_MIN,
   type Horario,
 } from './horario'
+import { programarAvisos, olvidarAvisos } from './avisos'
 
 // =====================================================================
 // El dia del promotor, arriba del itinerario
@@ -87,6 +88,18 @@ export default function BarraJornada({ primeraVisita, dia }: Props) {
     horarioDeHoy(hoy).then(setHorario).catch(() => setHorario(undefined))
   }, [])
 
+  // Los avisos se reponen cuando cambia algo de lo que dependen. Como
+  // programarAvisos() cancela los suyos antes de poner los nuevos,
+  // repetirlo no apila avisos duplicados.
+  useEffect(() => {
+    if (!listo || horario === undefined) return
+    programarAvisos({
+      primeraVisita,
+      horario: horario ?? null,
+      yaHizoCheckIn: estado === 'abierta',
+    }).catch(() => {})
+  }, [listo, horario, primeraVisita, estado])
+
   const abierta = estado === 'abierta'
   const enComida = !!comida
 
@@ -96,6 +109,14 @@ export default function BarraJornada({ primeraVisita, dia }: Props) {
    * y dejar al promotor sin poder volver a trabajar por eso seria
    * absurdo. La foto sale sola despues.
    */
+  const hacerCheckIn = useCallback(async () => {
+    await checkInSeguridad()
+    // Ya no hay que recordarle algo que acaba de hacer. El efecto de
+    // arriba tambien lo cubre, pero esto es inmediato y no depende de
+    // que el estado alcance a repintar.
+    olvidarAvisos().catch(() => {})
+  }, [checkInSeguridad])
+
   const volverDeComer = useCallback(async () => {
     if (!jornada || volviendo) return
     setVolviendo(true)
@@ -210,7 +231,7 @@ export default function BarraJornada({ primeraVisita, dia }: Props) {
                etiqueta="Terminar la comida y tomar la foto de regreso" />
       ) : !abierta ? (
         <Boton texto="HACER CHECK-IN" ocupado={estado === 'ocupado'}
-               onPress={checkInSeguridad} etiqueta="Hacer el check-in de seguridad" />
+               onPress={hacerCheckIn} etiqueta="Hacer el check-in de seguridad" />
       ) : (
         <>
           {(horario?.minutos_comida ?? 0) > 0 && (

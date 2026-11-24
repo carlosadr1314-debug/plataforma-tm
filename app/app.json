@@ -20,7 +20,8 @@
       "permissions": [
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION",
-        "CAMERA"
+        "CAMERA",
+        "POST_NOTIFICATIONS"
       ]
     },
     "web": {
@@ -40,6 +41,13 @@
         {
           "cameraPermission": "Plataforma TM usa la cámara para la evidencia fotográfica de cada visita.",
           "photosPermission": "Plataforma TM no usa tus fotos guardadas; solo las que tomas durante la visita."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#16324F",
+          "defaultChannel": "checkin"
         }
       ]
     ]

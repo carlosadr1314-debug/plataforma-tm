@@ -111,3 +111,28 @@ export function limiteCheckIn(primeraVisita: string | null, h: Horario | null): 
 /** "12:30" a partir de una hora del servidor, que puede traer segundos. */
 export const hhmm = (t: string | null | undefined) =>
   t ? String(t).slice(0, 5) : ''
+
+/**
+ * Que avisos tocan y a que hora. Vive aqui y no en avisos.ts porque es
+ * una cuenta de reloj y nada mas: asi se puede probar sin levantar el
+ * modulo de notificaciones, que no corre fuera del telefono.
+ *
+ * Devuelve vacio cuando ya hizo el check-in —no hay que recordarle
+ * algo que ya hizo— y descarta las horas que ya pasaron, porque un
+ * aviso programado para un momento anterior se entrega de inmediato y
+ * asusta sin servir.
+ */
+export function avisosAProgramar(opciones: {
+  referencia: string | null
+  yaHizoCheckIn: boolean
+  ahora?: Date
+}): { minutos: number; cuando: Date }[] {
+  const { referencia, yaHizoCheckIn } = opciones
+  const ahora = opciones.ahora ?? new Date()
+  if (yaHizoCheckIn || !referencia) return []
+
+  const base = hoyALas(referencia, ahora).getTime()
+  return AVISOS_MIN
+    .map(minutos => ({ minutos, cuando: new Date(base - minutos * 60_000) }))
+    .filter(a => a.cuando.getTime() > ahora.getTime())
+}
