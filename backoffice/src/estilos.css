@@ -659,3 +659,28 @@ tr.sin-tocar td b{color:var(--tinta-2)}
   color:#8A1C1C; background:#FCEDEC; border:1px solid #F2CFCB;
   border-radius:8px; padding:9px 11px;
 }
+
+/* ---------- jornadas ---------- */
+.aviso.ojo{background:#FBF3DF;border:1px solid #E8D9A8;color:#6B4A00}
+
+.seccion{
+  font-family:'Barlow Condensed',sans-serif; text-transform:uppercase;
+  font-size:19px; font-weight:600; margin:26px 0 8px; color:var(--tinta);
+}
+.seccion:first-of-type{margin-top:18px}
+
+/* Las cifras en columna se comparan de un vistazo solo si no bailan. */
+td.cifras, td.num{font-variant-numeric:tabular-nums}
+td.num{text-align:right; white-space:nowrap}
+th.num{text-align:right}
+td.cifras small, td small{color:var(--tinta-2); font-size:11.5px; line-height:1.3}
+td i{color:var(--tinta-2); font-style:normal; font-size:12.5px}
+
+/* El exceso se marca, no se grita: es un dato para revisar, no una
+   sentencia. Contraste calculado: 7.3:1 y 7.2:1 sobre su fondo. */
+.de-mas{
+  display:inline-block; background:#FDF0E9; border:1px solid #F2D3C2;
+  color:#8A3312; border-radius:6px; padding:2px 7px; font-weight:600;
+  font-size:12.5px;
+}
+.en-tiempo{color:#155635; font-size:12.5px; font-weight:500}

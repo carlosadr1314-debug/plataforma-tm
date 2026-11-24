@@ -8,6 +8,7 @@ import Catalogo from './paginas/Catalogo'
 import Formularios from './paginas/Formularios'
 import FormularioEditor from './paginas/FormularioEditor'
 import Itinerarios from './paginas/Itinerarios'
+import Jornadas from './paginas/Jornadas'
 import Usuarios from './paginas/Usuarios'
 import Visitas from './paginas/Visitas'
 import Clientes from './paginas/Clientes'
@@ -51,6 +52,7 @@ function Rutas() {
         <Route path="formularios" element={<Formularios />} />
         <Route path="formularios/:id" element={<FormularioEditor />} />
         <Route path="itinerarios" element={<Itinerarios />} />
+        <Route path="jornadas" element={<Jornadas />} />
         <Route path="usuarios" element={<Usuarios />} />
         <Route path="visitas/seguimiento" element={<Mapa />} />
       </Route>
