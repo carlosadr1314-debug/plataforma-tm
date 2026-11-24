@@ -25,6 +25,9 @@ import { ANTICIPACION_MIN, avisosAProgramar, type Horario } from './horario'
 const CANAL = 'checkin'
 /** Para reconocer los nuestros y no cancelar los de alguien mas. */
 const PREFIJO = 'tm.checkin.'
+const AVISO_COMIDA = 'tm.comida.fin'
+/** Cuanto antes de que se le acabe la comida se le avisa. */
+export const AVISO_COMIDA_MIN = 10
 
 /** La aplicacion abierta tambien los muestra: si no, parecen perdidos. */
 Notifications.setNotificationHandler({
@@ -132,4 +135,58 @@ export async function programarAvisos(opciones: {
 /** Al hacer el check-in sobran: se quitan para no sonar de balde. */
 export async function olvidarAvisos() {
   await cancelarLosNuestros()
+}
+
+
+// ---------------------------------------------------------------------
+// Avisos del momento, no programados
+// ---------------------------------------------------------------------
+
+/**
+ * Se alejo del punto de venta con la visita abierta. Va primero a el:
+ * casi siempre es un mandado de cinco minutos y basta con
+ * recordarselo. El renglon para la oficina queda de todos modos.
+ */
+export async function avisarSalidaDeRadio(metros: number) {
+  try {
+    if (!(await permisoAvisos())) return
+    await prepararCanal()
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: 'Te alejaste del punto de venta',
+        body: `Vas a unos ${metros} m de la tienda y tu visita sigue abierta. ` +
+              'Si ya terminaste, ciérrala; si no, regresa.',
+        sound: 'default',
+      },
+      // Sin disparador se entrega de inmediato.
+      trigger: null,
+    })
+  } catch { /* un aviso que no sale no debe tumbar la vigilancia */ }
+}
+
+/** Diez minutos antes de que se le acabe la comida. */
+export async function avisarFinDeComida(cuando: Date) {
+  if (cuando.getTime() <= Date.now()) return
+  try {
+    if (!(await permisoAvisos())) return
+    await prepararCanal()
+    await Notifications.scheduleNotificationAsync({
+      identifier: AVISO_COMIDA,
+      content: {
+        title: 'Tu comida está por terminar',
+        body: `Te quedan ${AVISO_COMIDA_MIN} minutos. Acuérdate de que para ` +
+              'volver tienes que tomar una foto.',
+        sound: 'default',
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: cuando,
+        ...(Platform.OS === 'android' ? { channelId: CANAL } : {}),
+      },
+    })
+  } catch { /* ni modo */ }
+}
+
+export async function olvidarAvisoDeComida() {
+  try { await Notifications.cancelScheduledNotificationAsync(AVISO_COMIDA) } catch { /* no estaba */ }
 }

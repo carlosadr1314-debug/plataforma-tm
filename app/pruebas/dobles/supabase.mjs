@@ -9,6 +9,7 @@ export const estado = {
   evidencias: [],        // filas de la tabla evidencia
   subidas: [],           // { ruta, bytes } de lo que llego al bucket
   fallaSubida: null,     // para probar la cola cuando el bucket dice que no
+  upserts: [],           // lo ultimo que llego por upsert, tal cual
 }
 
 function resultado(fila) {
@@ -33,6 +34,15 @@ export const supabase = {
           then(resolver) {
             if (estado.falla) return Promise.resolve({ error: estado.falla }).then(resolver)
             if (tabla === 'respuesta') estado.respuestas.push(...lista)
+            else if (tabla === 'alerta_radio') {
+              // Upsert de verdad: la llave es itinerario + salio_en.
+              for (const f of lista) {
+                const i = estado.upserts.findIndex(
+                  x => x.itinerario_id === f.itinerario_id && x.salio_en === f.salio_en)
+                if (i >= 0) estado.upserts[i] = { ...estado.upserts[i], ...f }
+                else estado.upserts.push({ ...f })
+              }
+            }
             else estado.enviados.push(...lista)
             return Promise.resolve({ error: null }).then(resolver)
           },
@@ -99,4 +109,5 @@ export function reiniciar() {
   estado.evidencias = []
   estado.subidas = []
   estado.visitaPorItinerario = {}
+  estado.upserts = []
 }

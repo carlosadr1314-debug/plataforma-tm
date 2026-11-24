@@ -5,8 +5,8 @@ import { type useJornada } from './jornada'
 import { tomarFoto } from './fotos'
 import { sincronizar } from './sinSenal'
 import {
-  horarioDeHoy, limiteCheckIn, efectivas, enHoras, hhmm, ANTICIPACION_MIN,
-  type Horario,
+  horarioDeHoy, limiteCheckIn, efectivas, enHoras, hhmm, hoyALas,
+  ANTICIPACION_MIN, type Horario,
 } from './horario'
 import { programarAvisos, olvidarAvisos } from './avisos'
 
@@ -66,7 +66,7 @@ type Props = {
 
 export default function BarraJornada({ primeraVisita, dia }: Props) {
   const {
-    estado, jornada, pendientes, ultimo, aviso, listo, comida,
+    estado, jornada, pendientes, ultimo, aviso, listo, comida, comidaTomada,
     checkInSeguridad, cerrar, empezarComida, terminarComida,
   } = dia
 
@@ -130,6 +130,25 @@ export default function BarraJornada({ primeraVisita, dia }: Props) {
     setVolviendo(false)
     sincronizar().catch(() => {})
   }, [jornada, volviendo, terminarComida])
+
+  /**
+   * La jornada no se cierra antes de la hora de salida. El horario es
+   * lo que vino a cumplir: dejarlo cerrar a media tarde convertiria el
+   * registro en una formalidad.
+   */
+  function intentarCerrar() {
+    const salida = horario ? hoyALas(horario.salida) : null
+    if (salida && Date.now() < salida.getTime()) {
+      const faltan = Math.ceil((salida.getTime() - Date.now()) / 60_000)
+      Alert.alert(
+        'Todavía no acaba tu horario',
+        `Tu salida es a las ${hhmm(horario!.salida)} y faltan ${enHoras(faltan)}. ` +
+        'Si tienes que irte antes, háblalo con tu supervisor.',
+        [{ text: 'Entendido' }])
+      return
+    }
+    cerrar()
+  }
 
   function preguntarComida() {
     const min = horario?.minutos_comida ?? 60
@@ -207,7 +226,8 @@ export default function BarraJornada({ primeraVisita, dia }: Props) {
               ? `${pendientes} ${pendientes === 1 ? 'punto guardado' : 'puntos guardados'} ` +
                 'en el teléfono. Se mandan solos en cuanto haya señal.'
               : ultimo
-                ? `Último punto ${haceCuanto(ultimo)}.`
+                ? `Último punto ${haceCuanto(ultimo)}.` +
+                  (comidaTomada ? ' Tu comida de hoy ya la tomaste.' : '')
                 : 'Buscando la señal del GPS…'}
       </Text>
 
@@ -234,12 +254,12 @@ export default function BarraJornada({ primeraVisita, dia }: Props) {
                onPress={hacerCheckIn} etiqueta="Hacer el check-in de seguridad" />
       ) : (
         <>
-          {(horario?.minutos_comida ?? 0) > 0 && (
+          {(horario?.minutos_comida ?? 0) > 0 && !comidaTomada && (
             <Boton texto="TOMAR MI COMIDA" secundario onPress={preguntarComida}
                    etiqueta="Empezar el tiempo de comida" />
           )}
           <Boton texto="TERMINAR JORNADA" secundario
-                 onPress={cerrar} etiqueta="Terminar la jornada" />
+                 onPress={intentarCerrar} etiqueta="Terminar la jornada" />
         </>
       )}
     </View>

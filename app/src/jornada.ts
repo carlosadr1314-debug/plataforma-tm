@@ -2,7 +2,10 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { AppState } from 'react-native'
 import * as Location from 'expo-location'
 import { supabase } from './supabase'
+import { avisarSalidaDeRadio, avisarFinDeComida, olvidarAvisoDeComida,
+         AVISO_COMIDA_MIN } from './avisos'
 import { encolar, vaciar, cuantosPendientes, type Punto } from './cola'
+import { revisar, sincronizarAlertas, alSalirse } from './vigilanciaRadio'
 
 // =====================================================================
 // Jornada y rastreo
@@ -74,6 +77,9 @@ export function useJornada() {
   const [listo, setListo] = useState(false)
 
   const [comida, setComida] = useState<Comida | null>(null)
+  // Si ya la tomo hoy. Es una al dia, asi que una vez cerrada el boton
+  // desaparece en vez de quedarse ofreciendo algo que la base rechaza.
+  const [comidaTomada, setComidaTomada] = useState(false)
 
   const vigilante = useRef<Location.LocationSubscription | null>(null)
   // Con que cadencia esta midiendo ahora mismo, para no resuscribirse
@@ -107,8 +113,16 @@ export function useJornada() {
     }
 
     await encolar(punto)
+
+    // El mismo punto sirve para dos cosas: el rastro de la jornada y
+    // vigilar que no se haya alejado de la tienda que esta visitando.
+    // Un segundo GPS para esto seria el doble de bateria por el mismo
+    // dato.
+    revisar(pos)
+
     setUltimo(new Date(pos.timestamp))
     setPendientes(await vaciar())
+    sincronizarAlertas().catch(() => {})
   }, [])
 
   const arrancarVigilante = useCallback(async (modo: 'normal' | 'comida' = 'normal') => {
@@ -131,6 +145,12 @@ export function useJornada() {
     vigilante.current = null
   }
 
+  // Quien avisa vive en avisos.ts; la vigilancia solo dice "se fue".
+  useEffect(() => {
+    alSalirse(metros => { avisarSalidaDeRadio(metros).catch(() => {}) })
+    return () => alSalirse(null)
+  }, [])
+
   // Al abrir la aplicacion: si quedo una jornada abierta —se cerro la
   // aplicacion, se reinicio el telefono— se retoma donde iba.
   useEffect(() => {
@@ -148,10 +168,15 @@ export function useJornada() {
         // Si se quedo comiendo y cerro la aplicacion, el contador
         // sigue donde iba: lo que manda es la hora de inicio que
         // quedo en la base, no un cronometro de la pantalla.
-        const { data: cm } = await supabase.from('comida')
+        // Todas las del dia, no solo la abierta: hace falta saber si
+        // ya la tomo aunque ya haya vuelto.
+        const { data: cms } = await supabase.from('comida')
           .select('id,jornada_id,inicio,fin,minutos_asignados')
-          .eq('jornada_id', (data as Jornada).id).is('fin', null).maybeSingle()
-        if (cm) setComida(cm as Comida)
+          .eq('jornada_id', (data as Jornada).id)
+        const lista = (cms ?? []) as Comida[]
+        const cm = lista.find(x => !x.fin) ?? null
+        if (cm) setComida(cm)
+        setComidaTomada(lista.length > 0)
 
         const permiso = await Location.getForegroundPermissionsAsync()
         if (permiso.granted) arrancarVigilante(cm ? 'comida' : 'normal')
@@ -268,7 +293,7 @@ export function useJornada() {
    */
   async function empezarComida(minutos: number) {
     const j = actual.current
-    if (!j || comida) return
+    if (!j || comida || comidaTomada) return
     setAviso('')
 
     const { data, error } = await supabase.from('comida')
@@ -276,11 +301,25 @@ export function useJornada() {
       .select('id,jornada_id,inicio,fin,minutos_asignados').single()
 
     if (error || !data) {
-      setAviso('No se pudo registrar tu comida. Revisa que tengas señal.')
+      // La base tambien lo impide: si el telefono se quedo con un
+      // estado viejo, el indice unico es la ultima palabra.
+      const yaFue = (error?.message ?? '').toLowerCase().includes('duplicate')
+      setComidaTomada(yaFue || comidaTomada)
+      setAviso(yaFue
+        ? 'Ya tomaste tu comida hoy. Es una por día.'
+        : 'No se pudo registrar tu comida. Revisa que tengas señal.')
       return
     }
     setComida(data as Comida)
+    setComidaTomada(true)
     arrancarVigilante('comida')
+
+    // El aviso de que se le acaba. Se calcula desde la hora que
+    // devolvio la base, no desde el reloj de la pantalla: si el
+    // telefono trae la hora corrida, el contador y el aviso tienen
+    // que correrse igual.
+    const fin = new Date(new Date((data as Comida).inicio).getTime() + minutos * 60_000)
+    avisarFinDeComida(new Date(fin.getTime() - AVISO_COMIDA_MIN * 60_000)).catch(() => {})
   }
 
   /**
@@ -302,11 +341,12 @@ export function useJornada() {
       return
     }
     setComida(null)
+    olvidarAvisoDeComida().catch(() => {})
     arrancarVigilante('normal')
   }
 
   return {
-    estado, jornada, pendientes, ultimo, aviso, listo, comida,
+    estado, jornada, pendientes, ultimo, aviso, listo, comida, comidaTomada,
     checkInSeguridad, cerrar, empezarComida, terminarComida,
   }
 }

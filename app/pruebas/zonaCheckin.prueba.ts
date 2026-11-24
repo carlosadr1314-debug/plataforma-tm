@@ -1,5 +1,5 @@
 // Prueba de la regla del check-in. Corre con: npm run prueba
-import { zonaDeCheckin } from '../src/radio.ts'
+import { zonaDeCheckin, sigueFuera, metrosEntre } from '../src/radio.ts'
 
 let ok = 0, mal = 0
 function afirmar(que: string, cierto: boolean) {
@@ -29,6 +29,31 @@ afirmar('un margen negativo no regala metros',       z(400, -500) === 'bloqueado
 console.log('--- una tienda chica aprieta sola ---')
 afirmar('radio 40: a 55 m con GPS bueno, avisa',     zonaDeCheckin(55, 5, 40) === 'cerca')
 afirmar('radio 40: a 120 m con GPS bueno, bloquea',  zonaDeCheckin(120, 5, 40) === 'bloqueado')
+
+console.log('--- salirse del radio con la visita en curso ---')
+// radio 100, margen de GPS 10, colchon 50: para declararlo fuera
+// tiene que estar a mas de 160.
+afirmar('adentro no es salirse', !sigueFuera(40, 10, 100, false))
+afirmar('justo en el borde tampoco', !sigueFuera(100, 10, 100, false))
+afirmar('pasado el radio pero dentro del colchon, no',
+        !sigueFuera(150, 10, 100, false))
+afirmar('lejos de verdad, si', sigueFuera(200, 10, 100, false))
+afirmar('con el GPS impreciso se le da el beneficio de la duda',
+        !sigueFuera(200, 60, 100, false))
+
+// Y la histeresis: ya declarado fuera, para volver basta con poder
+// estar dentro. Sin esto, parado en el borde generaria una alerta por
+// minuto.
+afirmar('ya fuera, sigue fuera a 150', sigueFuera(150, 10, 100, true))
+afirmar('ya fuera, vuelve al entrar al radio', !sigueFuera(100, 10, 100, true))
+afirmar('el colchon solo cuenta para salir, no para volver',
+        !sigueFuera(105, 10, 100, true) && !sigueFuera(150, 10, 100, false))
+
+console.log('--- distancia entre dos puntos ---')
+afirmar('el mismo punto da cero', metrosEntre(19.5, -99.1, 19.5, -99.1) === 0)
+// Un grado de latitud son unos 111 km; una centesima, unos 1.1 km.
+const d = metrosEntre(19.50, -99.10, 19.51, -99.10)
+afirmar('una centesima de latitud ronda los 1110 m', d > 1090 && d < 1130)
 
 console.log(`\n${ok} pasaron, ${mal} fallaron`)
 if (mal) process.exitCode = 1

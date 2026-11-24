@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { supabase } from './supabase'
 import BarraJornada from './BarraJornada'
 import { useJornada } from './jornada'
+import { vigilar, soltar } from './vigilanciaRadio'
 import Visita, { type Parada as ParadaVisita } from './Visita'
 import {
   guardarRuta, rutaGuardada, pendientes, sincronizar, bajarFormulario,
@@ -74,6 +75,24 @@ export default function Itinerario() {
     }))
     setDeGuardado(guardada)
   }, [])
+
+  // La vigilancia del radio cuelga de la ruta, no de la pantalla de
+  // visita: el promotor puede volver a la lista con la visita abierta
+  // y hay que seguir mirando. Se suelta sola cuando ya no hay ninguna
+  // en curso.
+  useEffect(() => {
+    const curso = paradas.find(p => unaVisita(p.visita)?.estado === 'en_curso')
+    if (!curso) { soltar(); return }
+    vigilar({
+      itinerarioId: curso.id,
+      lat: (curso.pdv as any)?.lat,
+      lng: (curso.pdv as any)?.lng,
+      radio: (curso.pdv as any)?.radio_checkin,
+    })
+  }, [paradas])
+
+  // Al salir de la ruta no se queda vigilando nada.
+  useEffect(() => () => soltar(), [])
 
   // La hora de la primera parada del dia: es contra ella que se mide
   // la hora limite del check-in de seguridad.

@@ -9,7 +9,7 @@ import { apuntar, sincronizar, formularioGuardado, respuestasGuardadas } from '.
 import { pendientes as faltantes } from './reglasFormulario'
 import { fotosDe, olvidarFotosDe, tomarFoto, hayFotoDeLlegada } from './fotos'
 import Formulario from './Formulario'
-import { zonaDeCheckin, TOLERANCIA_M } from './radio'
+import { zonaDeCheckin, TOLERANCIA_M, metrosEntre } from './radio'
 import { c, f, CIFRAS, TOCABLE } from './tema'
 
 // =====================================================================
@@ -55,16 +55,6 @@ export type Parada = {
 }
 
 const unaVisita = (v: any) => (Array.isArray(v) ? v[0] : v) ?? null
-
-// Haversine. Para distancias de tienda sobra con la tierra como esfera.
-function metrosEntre(aLat: number, aLng: number, bLat: number, bLng: number) {
-  const R = 6371000
-  const rad = (g: number) => (g * Math.PI) / 180
-  const dLat = rad(bLat - aLat), dLng = rad(bLng - aLng)
-  const h = Math.sin(dLat / 2) ** 2 +
-            Math.cos(rad(aLat)) * Math.cos(rad(bLat)) * Math.sin(dLng / 2) ** 2
-  return Math.round(2 * R * Math.asin(Math.sqrt(h)))
-}
 
 const hhmm = (iso: string) =>
   new Date(iso).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })
