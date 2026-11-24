@@ -56,9 +56,14 @@ const esMapaSku = (v: unknown): v is Record<string, number | boolean> =>
 type Foto = {
   id: string; storage_path: string; bytes: number | null
   lat: number | null; lng: number | null; tomada_en: string | null
+  tipo: string
   pregunta: { texto: string } | null
   url?: string | null
 }
+
+/** De que es la foto: la pregunta si la tiene, si no su etiqueta. */
+const tituloDe = (f: Foto) =>
+  f.pregunta?.texto ?? TITULO_EVIDENCIA[f.tipo] ?? 'Evidencia de la visita'
 
 function diaLocal(desfase = 0) {
   const d = new Date()
@@ -163,7 +168,7 @@ export default function Visitas() {
     }
 
     const { data: ev } = await supabase.from('evidencia')
-      .select('id,storage_path,bytes,lat,lng,tomada_en,pregunta:pregunta_id(texto)')
+      .select('id,storage_path,bytes,lat,lng,tomada_en,tipo,pregunta:pregunta_id(texto)')
       .eq('visita_id', v.id).order('tomada_en')
     const archivos = ((ev as any) ?? []) as Foto[]
 
@@ -451,9 +456,9 @@ export default function Visitas() {
                         f.url ? (
                           <button className="foto-t" key={f.id} type="button"
                                   onClick={() => setVerFoto(f)}
-                                  title={f.pregunta?.texto ?? 'Evidencia de la visita'}
-                                  aria-label={`Ampliar la evidencia de: ${f.pregunta?.texto ?? 'la visita'}`}>
-                            <img src={f.url} alt={f.pregunta?.texto ?? 'Evidencia de la visita'} />
+                                  title={tituloDe(f)}
+                                  aria-label={`Ampliar la evidencia de: ${tituloDe(f)}`}>
+                            <img src={f.url} alt={tituloDe(f)} />
                             <b>{hhmm(f.tomada_en)}</b>
                           </button>
                         ) : (
@@ -480,56 +485,10 @@ export default function Visitas() {
         </>
       ) })()}
 
-      {verFoto && <Ampliada foto={verFoto} onCerrar={() => setVerFoto(null)} />}
+      {verFoto && (
+        <FotoAmpliada foto={{ ...verFoto, titulo: tituloDe(verFoto) } as FotoVista}
+                      onCerrar={() => setVerFoto(null)} />
+      )}
     </>
-  )
-}
-
-// ---------------------------------------------------------------------
-
-/**
- * La evidencia en grande. Una miniatura de 90 px sirve para saber que
- * hay foto; no sirve para ver si el precio del anaquel es el pactado
- * ni si la cenefa esta puesta, que es para lo que se pide la foto.
- *
- * Encima va de que pregunta salio: sin eso, ocho fotos de un anaquel
- * son ocho fotos de un anaquel.
- */
-function Ampliada({ foto, onCerrar }: { foto: Foto; onCerrar: () => void }) {
-  useEffect(() => {
-    const alTeclear = (e: KeyboardEvent) => { if (e.key === 'Escape') onCerrar() }
-    window.addEventListener('keydown', alTeclear)
-    // El fondo no se desplaza mientras esto esta encima.
-    const antes = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      window.removeEventListener('keydown', alTeclear)
-      document.body.style.overflow = antes
-    }
-  }, [onCerrar])
-
-  const coords = foto.lat != null && foto.lng != null
-    ? `${foto.lat.toFixed(5)}, ${foto.lng.toFixed(5)}`
-    : null
-
-  return (
-    <div className="lupa" role="dialog" aria-modal="true"
-         aria-label={foto.pregunta?.texto ?? 'Evidencia de la visita'}
-         onClick={onCerrar}>
-      <div className="lupa-caja" onClick={e => e.stopPropagation()}>
-        <div className="lupa-cabeza">
-          <div>
-            <h4>{foto.pregunta?.texto ?? 'Evidencia de la visita'}</h4>
-            <p>
-              {hhmm(foto.tomada_en)} · {kb(foto.bytes)}
-              {coords && <> · <span className="cifras">{coords}</span></>}
-            </p>
-          </div>
-          <button type="button" className="lupa-x" onClick={onCerrar}
-                  aria-label="Cerrar la foto">×</button>
-        </div>
-        <img src={foto.url ?? ''} alt={foto.pregunta?.texto ?? 'Evidencia de la visita'} />
-      </div>
-    </div>
   )
 }

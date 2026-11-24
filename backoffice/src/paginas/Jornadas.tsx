@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../supabase'
+import FotoAmpliada, { TITULO_EVIDENCIA, type FotoVista }
+  from '../componentes/FotoAmpliada'
 
 // =====================================================================
 // Jornadas
@@ -31,6 +33,19 @@ type Jornada = {
   check_in_seguridad: string | null
   seguridad_lat: number | null; seguridad_lng: number | null
   usuario: { id: string; nombre: string } | null
+}
+
+/**
+ * La foto con la que el promotor vuelve de comer. Cuelga de la
+ * jornada y no de una visita: a esa hora no hay visita abierta, y por
+ * eso no sale en el panel de Visitas. Aqui es donde tiene sentido
+ * mirarla, junto al tiempo que se tomo.
+ */
+type FotoJornada = {
+  id: string; jornada_id: string; storage_path: string
+  bytes: number | null; lat: number | null; lng: number | null
+  tomada_en: string | null; tipo: string
+  url?: string | null
 }
 
 type Alerta = {
@@ -75,6 +90,8 @@ export default function Jornadas() {
   const [jornadas, setJornadas] = useState<Jornada[]>([])
   const [comidas, setComidas] = useState<Comida[]>([])
   const [alertas, setAlertas] = useState<Alerta[]>([])
+  const [fotos, setFotos] = useState<FotoJornada[]>([])
+  const [verFoto, setVerFoto] = useState<FotoJornada | null>(null)
   const [cargando, setCargando] = useState(true)
   const [aviso, setAviso] = useState('')
 
@@ -95,9 +112,34 @@ export default function Jornadas() {
     ])
 
     if (j.error) setAviso('No se pudieron cargar las jornadas. ' + j.error.message)
-    setJornadas((j.data as any) ?? [])
+    const lista = ((j.data as any) ?? []) as Jornada[]
+    setJornadas(lista)
     setComidas((c.data as any) ?? [])
     setAlertas((a.data as any) ?? [])
+
+    // Las fotos de la jornada. Se piden por los ids que acaban de
+    // salir, no por fecha: evidencia no tiene fecha propia.
+    if (lista.length > 0) {
+      const { data: ev } = await supabase.from('evidencia')
+        .select('id,jornada_id,storage_path,bytes,lat,lng,tomada_en,tipo')
+        .in('jornada_id', lista.map(x => x.id))
+        .order('tomada_en')
+      const archivos = ((ev as any) ?? []) as FotoJornada[]
+
+      // La URL se firma de a una; el bucket es privado y no se puede
+      // enlazar directo.
+      for (const f of archivos) {
+        try {
+          const { data: firmada } = await supabase.storage
+            .from('evidencia').createSignedUrl(f.storage_path, 300)
+          f.url = firmada?.signedUrl ?? null
+        } catch { f.url = null }
+      }
+      setFotos(archivos)
+    } else {
+      setFotos([])
+    }
+
     setCargando(false)
   }, [desde, hasta])
 
@@ -105,6 +147,9 @@ export default function Jornadas() {
 
   const comidaDe = (usuarioId: string, fecha: string) =>
     comidas.find(x => x.usuario_id === usuarioId && x.fecha === fecha) ?? null
+
+  const fotoDe = (jornadaId: string, tipo: string) =>
+    fotos.find(f => f.jornada_id === jornadaId && f.tipo === tipo) ?? null
 
   const excedidas = comidas.filter(c => c.minutos_de_mas > 0)
   const sinCheckIn = jornadas.filter(x => !x.check_in_seguridad).length
@@ -158,6 +203,7 @@ export default function Jornadas() {
               <th scope="col">Check-in</th>
               <th scope="col">Cierre</th>
               <th scope="col">Comida</th>
+              <th scope="col">Regreso</th>
               <th scope="col" className="num">De más</th>
             </tr>
           </thead>
@@ -187,6 +233,19 @@ export default function Jornadas() {
                       </>
                     )}
                   </td>
+                  <td>{(() => {
+                    const fr = fotoDe(j.id, 'regreso_comida')
+                    if (!fr) return cm ? <i>sin foto</i> : '—'
+                    if (!fr.url) return <i>no disponible</i>
+                    return (
+                      <button type="button" className="foto-chica"
+                              onClick={() => setVerFoto(fr)}
+                              title="Foto con la que volvió de comer"
+                              aria-label="Ampliar la foto de regreso de la comida">
+                        <img src={fr.url} alt="Regreso de la comida" />
+                      </button>
+                    )
+                  })()}</td>
                   <td className="num">
                     {!cm ? '—' : cm.minutos_de_mas > 0
                       ? <span className="de-mas">+{cm.minutos_de_mas} min</span>
@@ -196,7 +255,7 @@ export default function Jornadas() {
               )
             })}
             {!cargando && jornadas.length === 0 && (
-              <tr><td colSpan={6} className="vacio">
+              <tr><td colSpan={7} className="vacio">
                 No hay jornadas en estas fechas.
               </td></tr>
             )}
@@ -257,6 +316,13 @@ export default function Jornadas() {
           </tbody>
         </table>
       </div>
+      {verFoto && (
+        <FotoAmpliada
+          foto={{ ...verFoto,
+                  titulo: TITULO_EVIDENCIA[verFoto.tipo] ?? 'Evidencia de la jornada',
+                } as FotoVista}
+          onCerrar={() => setVerFoto(null)} />
+      )}
     </>
   )
 }
