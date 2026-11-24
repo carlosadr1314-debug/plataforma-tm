@@ -38,12 +38,23 @@ const CALIDAD = 0.6
 /** Supabase rechaza arriba de 5 MB. Si una foto reducida llega ahi, algo salio mal. */
 const TOPE_BYTES = 5 * 1024 * 1024
 
+/**
+ * De que es la foto. No todas cuelgan de una pregunta del formulario:
+ * la de llegada al punto de venta y la de regreso de comer no tienen
+ * pregunta, y la de comida ni siquiera tiene visita.
+ */
+export type TipoFoto = 'pregunta' | 'inicio_visita' | 'regreso_comida'
+
 export type FotoPendiente = {
   /** Lo genera el telefono: es el nombre del archivo y la llave de la lista. */
   id: string
-  itinerario_id: string
+  tipo: TipoFoto
+  /** De una visita. Null en las que cuelgan de la jornada. */
+  itinerario_id: string | null
   pregunta_id: string | null
-  cliente_id: string
+  cliente_id: string | null
+  /** De la jornada. Null en las que cuelgan de una visita. */
+  jornada_id: string | null
   archivo: string          // uri del archivo ya reducido, en carpeta permanente
   bytes: number
   lat: number | null
@@ -105,10 +116,16 @@ export async function permisoCamara(): Promise<boolean> {
   return pedido.granted
 }
 
-export async function tomarFoto(datos: {
-  itinerarioId: string
-  preguntaId: string | null
-  clienteId: string
+/**
+ * De donde cuelga la foto. O de una visita —con su cliente, para
+ * armar la ruta dentro del bucket— o de la jornada.
+ */
+export type Donde =
+  | { tipo: 'pregunta'; itinerarioId: string; clienteId: string; preguntaId: string }
+  | { tipo: 'inicio_visita'; itinerarioId: string; clienteId: string }
+  | { tipo: 'regreso_comida'; jornadaId: string }
+
+export async function tomarFoto(datos: Donde & {
   lat?: number | null
   lng?: number | null
 }): Promise<ResultadoFoto> {
@@ -152,11 +169,14 @@ export async function tomarFoto(datos: {
         error: 'La foto quedó demasiado pesada. Inténtalo otra vez.' }
     }
 
+    const deVisita = datos.tipo !== 'regreso_comida'
     const foto: FotoPendiente = {
       id,
-      itinerario_id: datos.itinerarioId,
-      pregunta_id: datos.preguntaId,
-      cliente_id: datos.clienteId,
+      tipo: datos.tipo,
+      itinerario_id: deVisita ? datos.itinerarioId : null,
+      pregunta_id: datos.tipo === 'pregunta' ? datos.preguntaId : null,
+      cliente_id: deVisita ? datos.clienteId : null,
+      jornada_id: datos.tipo === 'regreso_comida' ? datos.jornadaId : null,
       archivo: destino.uri,
       bytes,
       lat: datos.lat ?? null,
@@ -199,6 +219,13 @@ export async function fotosDe(itinerarioId: string): Promise<FotoPendiente[]> {
   return Object.values(l)
     .filter(f => f.itinerario_id === itinerarioId)
     .sort((a, b) => a.tomada_en.localeCompare(b.tomada_en))
+}
+
+/** Si ya hay foto de llegada a ese punto de venta. */
+export async function hayFotoDeLlegada(itinerarioId: string): Promise<boolean> {
+  const l = await fotosPendientes()
+  return Object.values(l).some(
+    f => f.itinerario_id === itinerarioId && f.tipo === 'inicio_visita')
 }
 
 /** Quita una foto que el promotor tomo mal. Si ya subio, se queda: lo
@@ -249,17 +276,36 @@ export function subirFotos(): Promise<number> {
     // El id de visita se pide una vez por itinerario, no una por foto.
     const visitas = new Map<string, string | null>()
 
+    let cortar = false
+
     for (const id of ids) {
+      if (cortar) break
       const f = l[id]
 
-      if (!visitas.has(f.itinerario_id)) {
-        const { data, error } = await supabase.from('visita')
-          .select('id').eq('itinerario_id', f.itinerario_id).maybeSingle()
-        if (error) break                       // sin red: se corta y se reintenta
-        visitas.set(f.itinerario_id, data?.id ?? null)
+      // La ruta dentro del bucket depende de a que cuelga la foto. La
+      // de visita necesita que la visita ya exista alla; la de
+      // jornada no espera a nadie.
+      let ruta: string | null = null
+      let visitaId: string | null = null
+
+      if (f.jornada_id) {
+        ruta = `${organizacion}/jornada/${f.jornada_id}/${id}.jpg`
+      } else if (f.itinerario_id) {
+        if (!visitas.has(f.itinerario_id)) {
+          const { data, error } = await supabase.from('visita')
+            .select('id').eq('itinerario_id', f.itinerario_id).maybeSingle()
+          if (error) { cortar = true; continue }   // sin red: se reintenta
+          visitas.set(f.itinerario_id, data?.id ?? null)
+        }
+        visitaId = visitas.get(f.itinerario_id) ?? null
+        if (!visitaId) continue                // la visita aun no sale; esta espera
+        ruta = `${organizacion}/${f.cliente_id}/${visitaId}/${id}.jpg`
+      } else {
+        // No cuelga de nada: no deberia existir, y reintentarla no
+        // la va a arreglar.
+        delete l[id]
+        continue
       }
-      const visitaId = visitas.get(f.itinerario_id)
-      if (!visitaId) continue                  // la visita aun no sale; esta espera
 
       const archivo = new File(f.archivo)
       if (!archivo.exists) {
@@ -268,8 +314,6 @@ export function subirFotos(): Promise<number> {
         delete l[id]
         continue
       }
-
-      const ruta = `${organizacion}/${f.cliente_id}/${visitaId}/${id}.jpg`
 
       // En un reintento la subida pudo haber quedado a medias: el
       // archivo arriba y el renglon sin escribir.
@@ -292,12 +336,14 @@ export function subirFotos(): Promise<number> {
 
       if (errSubida) {
         await guardar(l)                       // se conserva el contador de intentos
-        if (esDeRed(errSubida)) break
+        if (esDeRed(errSubida)) { cortar = true; continue }
         continue                               // permanente: las demas si pueden salir
       }
 
       const { error: errRenglon } = await supabase.from('evidencia').insert({
         visita_id: visitaId,
+        jornada_id: f.jornada_id,
+        tipo: f.tipo,
         pregunta_id: f.pregunta_id,
         storage_path: ruta,
         bytes: f.bytes,
@@ -308,7 +354,7 @@ export function subirFotos(): Promise<number> {
 
       if (errRenglon) {
         await guardar(l)
-        if (esDeRed(errRenglon)) break
+        if (esDeRed(errRenglon)) { cortar = true; continue }
         continue
       }
 

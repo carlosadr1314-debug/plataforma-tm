@@ -1,11 +1,12 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import {
-  View, Text, FlatList, Pressable, StyleSheet,
+  View, Text, FlatList, Pressable, StyleSheet, Alert,
   RefreshControl, ActivityIndicator,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { supabase } from './supabase'
 import BarraJornada from './BarraJornada'
+import { useJornada } from './jornada'
 import Visita, { type Parada as ParadaVisita } from './Visita'
 import {
   guardarRuta, rutaGuardada, pendientes, sincronizar, bajarFormulario,
@@ -54,6 +55,9 @@ export default function Itinerario() {
   const [refrescando, setRefrescando] = useState(false)
   const [error, setError] = useState('')
   const [abierta, setAbierta] = useState<string | null>(null)
+  // Vive aqui y no en la barra porque el itinerario tambien lo
+  // necesita: sin check-in de seguridad no se abre ninguna visita.
+  const dia = useJornada()
   const [sinEnviar, setSinEnviar] = useState(0)
   const [deGuardado, setDeGuardado] = useState(false)
 
@@ -70,6 +74,16 @@ export default function Itinerario() {
     }))
     setDeGuardado(guardada)
   }, [])
+
+  // La hora de la primera parada del dia: es contra ella que se mide
+  // la hora limite del check-in de seguridad.
+  const primeraVisita = useMemo(() => {
+    const horas = paradas
+      .map(p => p.hora_estimada)
+      .filter((h): h is string => !!h)
+      .sort()
+    return horas[0] ? horas[0].slice(0, 5) : null
+  }, [paradas])
 
   const cargar = useCallback(async (primera = false) => {
     setError('')
@@ -212,7 +226,7 @@ export default function Itinerario() {
           <>
             {/* La jornada va antes que la ruta: es lo primero que hace
                 en la manana y lo ultimo en la tarde. */}
-            <BarraJornada />
+            <BarraJornada primeraVisita={primeraVisita} dia={dia} />
 
             {(sinEnviar > 0 || deGuardado) && (
               <View style={s.sinRed} accessibilityLiveRegion="polite">
@@ -257,7 +271,20 @@ export default function Itinerario() {
               style={({ pressed }) => [
                 s.tarjeta, { borderLeftColor: e.canto }, pressed && s.tarjetaPresionada,
               ]}
-              onPress={() => setAbierta(item.id)}
+              onPress={() => {
+                // El check-in de seguridad es el requisito para
+                // empezar a trabajar, no una formalidad: sin el, la
+                // oficina no sabe que el promotor salio.
+                if (dia.estado !== 'abierta') {
+                  Alert.alert(
+                    'Falta tu check-in de seguridad',
+                    'Hazlo antes de empezar tu ruta. Es lo que le avisa a tu ' +
+                    'supervisor que ya vas en camino.',
+                    [{ text: 'Entendido' }])
+                  return
+                }
+                setAbierta(item.id)
+              }}
               accessibilityRole="button"
               accessibilityLabel={
                 `Parada ${index + 1}, ${hora}, ${item.pdv?.nombre ?? 'sin nombre'}, ${e.txt.toLowerCase()}`

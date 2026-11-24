@@ -97,7 +97,7 @@ export default function Formulario({ itinerarioId, formularioId, clienteId, onCe
   async function capturar(p: Pregunta) {
     if (tomando) return
     setTomando(true)
-    const r = await tomarFoto({ itinerarioId, preguntaId: p.id, clienteId })
+    const r = await tomarFoto({ tipo: 'pregunta', itinerarioId, preguntaId: p.id, clienteId })
     setTomando(false)
     if (r.ok) {
       setFotos(await fotosDe(itinerarioId))

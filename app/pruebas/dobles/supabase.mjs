@@ -44,6 +44,7 @@ export const supabase = {
         return { then(resolver) {
           if (estado.falla) return Promise.resolve({ error: estado.falla }).then(resolver)
           if (tabla === 'evidencia') estado.evidencias.push(...lista)
+          
           return Promise.resolve({ error: null }).then(resolver)
         } }
       },

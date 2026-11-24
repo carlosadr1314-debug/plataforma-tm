@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import * as Location from 'expo-location'
 import { apuntar, sincronizar, formularioGuardado, respuestasGuardadas } from './sinSenal'
 import { pendientes as faltantes } from './reglasFormulario'
-import { fotosDe, olvidarFotosDe } from './fotos'
+import { fotosDe, olvidarFotosDe, tomarFoto, hayFotoDeLlegada } from './fotos'
 import Formulario from './Formulario'
 import { zonaDeCheckin, TOLERANCIA_M } from './radio'
 import { c, f, CIFRAS, TOCABLE } from './tema'
@@ -201,9 +201,41 @@ export default function Visita({ parada, onCerrar, onCambio }: {
     return registrarLlegada(pos, null)
   }
 
+  /**
+   * Llegar pide foto. Es la constancia de que estuvo parado frente al
+   * anaquel: las coordenadas dicen donde estaba el telefono, la foto
+   * dice que estaba trabajando.
+   *
+   * Se exige que la foto quede GUARDADA en el telefono, no que haya
+   * subido. Adentro de una tienda casi nunca hay señal, y condicionar
+   * el inicio de la visita a que suba dejaria al promotor parado en
+   * la puerta sin poder hacer nada. La foto sale sola despues.
+   */
   async function registrarLlegada(pos: Location.LocationObject, metros: number | null) {
     setConfirmar(null)
     setError('')
+
+    // Sin cliente no se puede armar la ruta dentro del bucket. No
+    // deberia pasar —toda parada trae el suyo— pero si pasara, es
+    // mejor dejarlo trabajar que trabarle la visita por una foto.
+    if (parada.cliente_id && !(await hayFotoDeLlegada(parada.id))) {
+      setTrabajando(true)
+      const r = await tomarFoto({
+        tipo: 'inicio_visita',
+        itinerarioId: parada.id,
+        clienteId: parada.cliente_id as string,
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude,
+      })
+      setTrabajando(false)
+      if (!r.ok) {
+        setError(r.cancelada
+          ? 'Para iniciar la visita hay que tomar la foto de llegada.'
+          : r.error)
+        return
+      }
+    }
+
     setTrabajando(true)
 
     const ahora = new Date()

@@ -5,7 +5,8 @@
 // la tienda.
 
 import { tomarFoto, fotosPendientes, fotosDe, descartarFoto,
-         subirFotos, cuantasFotosFaltan, olvidarFotosDe } from '../src/fotos.ts'
+         subirFotos, cuantasFotosFaltan, olvidarFotosDe,
+         hayFotoDeLlegada } from '../src/fotos.ts'
 import { estado, reiniciar } from './dobles/supabase.mjs'
 import { _ponerFoto, _archivos, File } from './dobles/expo.mjs'
 
@@ -16,6 +17,7 @@ function afirmar(que: string, cierto: boolean) {
 }
 
 const DATOS = {
+  tipo: 'pregunta' as const,
   itinerarioId: 'it-7',
   preguntaId: 'p-1',
   clienteId: 'cli-1',
@@ -125,6 +127,40 @@ function hayCamara() {
   await descartarFoto(id4)
   afirmar('ya no esta en la lista', (await cuantasFotosFaltan()) === 0)
   afirmar('y su archivo tampoco', !new File(`mem://doc/evidencia/${id4}.jpg`).exists)
+
+  console.log('--- la foto de regreso de comer cuelga de la jornada ---')
+  reiniciar()
+  await olvidarFotosDe('it-7')
+  hayCamara()
+  const rc = await tomarFoto({ tipo: 'regreso_comida', jornadaId: 'jor-3' })
+  afirmar('se toma igual', rc.ok === true)
+  afirmar('sin visita ni cliente',
+          rc.ok && rc.foto.itinerario_id === null && rc.foto.cliente_id === null)
+
+  // Y lo importante: NO espera a que exista una visita. Un promotor
+  // volviendo de comer no tiene visita abierta, y si la foto esperara
+  // una, no subiria nunca.
+  quedan = await subirFotos()
+  afirmar('sube sin esperar ninguna visita', quedan === 0)
+  afirmar('a la ruta de jornada',
+          estado.subidas[0]?.ruta === `org-1/jornada/jor-3/${rc.ok ? rc.foto.id : ''}.jpg`)
+  afirmar('y el renglon dice de que es',
+          estado.evidencias[0]?.tipo === 'regreso_comida' &&
+          estado.evidencias[0]?.jornada_id === 'jor-3')
+
+  console.log('--- la foto de llegada al punto de venta ---')
+  reiniciar()
+  hayCamara()
+  const rl = await tomarFoto({ tipo: 'inicio_visita', itinerarioId: 'it-7', clienteId: 'cli-1' })
+  afirmar('se reconoce como llegada', rl.ok && rl.foto.tipo === 'inicio_visita')
+  afirmar('sin pregunta', rl.ok && rl.foto.pregunta_id === null)
+  afirmar('se puede consultar si ya hay', (await hayFotoDeLlegada('it-7')) === true)
+  afirmar('y de otra visita no', (await hayFotoDeLlegada('it-99')) === false)
+
+  estado.visitaPorItinerario['it-7'] = 'vis-7'
+  quedan = await subirFotos()
+  afirmar('sube con la visita',
+          quedan === 0 && estado.evidencias[0]?.tipo === 'inicio_visita')
 
   console.log(`\n${ok} pasaron, ${mal} fallaron`)
   if (mal) process.exitCode = 1
