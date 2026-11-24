@@ -281,6 +281,49 @@ begin
   end;
   perform pg_temp.afirmar('No puede estar en dos comidas a la vez', not permitido);
 
+  -- El hueco de la 016: el indice solo impedia dos ABIERTAS, asi que
+  -- al cerrar una se podia empezar otra, y otra.
+  update comida set fin = now()
+   where usuario_id = auth.uid() and fin is null;
+
+  permitido := false;
+  begin
+    insert into comida (jornada_id, minutos_asignados)
+    select id, 45 from jornada where usuario_id = auth.uid() and fin is null;
+    permitido := true;
+  exception when others then null;
+  end;
+  perform pg_temp.afirmar('Terminada la comida, NO puede tomar otra', not permitido);
+
+  -- El reporte: la gracia se descuenta y el promotor no la ve.
+  update comida
+     set inicio = now() - interval '70 minutes', fin = now()
+   where usuario_id = auth.uid();
+  select minutos_de_mas into n from comida_reporte where usuario_id = auth.uid();
+  perform pg_temp.afirmar('70 min sobre 45 asignados reporta 23 de mas, ya con la gracia',
+                          n = 23);
+
+  update comida set inicio = now() - interval '46 minutes', fin = now()
+   where usuario_id = auth.uid();
+  select minutos_de_mas into n from comida_reporte where usuario_id = auth.uid();
+  perform pg_temp.afirmar('Pasarse un minuto cae dentro de la gracia', n = 0);
+
+  -- Las alertas de radio.
+  insert into alerta_radio (itinerario_id, salio_en, distancia_max, lat, lng)
+  values ('eeee3333-0000-0000-0000-00000000000b', now(), 180, 19.58, -99.01);
+  select count(*) into n from alerta_radio;
+  perform pg_temp.afirmar('El promotor registra que se salio del radio', n = 1);
+
+  -- Se reenvia mientras sigue afuera: no debe duplicar.
+  permitido := false;
+  begin
+    insert into alerta_radio (itinerario_id, salio_en, distancia_max)
+    select itinerario_id, salio_en, 240 from alerta_radio;
+    permitido := true;
+  exception when others then null;
+  end;
+  perform pg_temp.afirmar('Reenviarla no la duplica', not permitido);
+
   -- Evidencia que cuelga de la jornada, no de una visita.
   insert into evidencia (jornada_id, tipo, storage_path)
   select id, 'regreso_comida', 'org/jornada/x/foto.jpg'
@@ -308,6 +351,14 @@ begin
   perform pg_temp.afirmar('El horario no se ve desde la otra empresa', n = 0);
   select count(*) into n from comida;
   perform pg_temp.afirmar('Ni la comida', n = 0);
+
+  -- Una vista sin security_invoker correria con los permisos de su
+  -- dueño y se saltaria el RLS. Aqui es donde se notaria.
+  select count(*) into n from comida_reporte;
+  perform pg_temp.afirmar('Ni el reporte de comida de la otra empresa', n = 0);
+
+  select count(*) into n from alerta_radio;
+  perform pg_temp.afirmar('Ni sus alertas de radio', n = 0);
 
   reset role;
 
