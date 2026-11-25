@@ -58,7 +58,12 @@ export type Jornada = {
   fin: string | null
 }
 
-export type EstadoJornada = 'cerrada' | 'ocupado' | 'abierta'
+/**
+ * 'cerrada'   = todavia no hace su check-in de hoy
+ * 'abierta'   = en jornada
+ * 'terminada' = ya cerro su dia; no hay segundo check-in
+ */
+export type EstadoJornada = 'cerrada' | 'ocupado' | 'abierta' | 'terminada'
 
 export type Comida = {
   id: string
@@ -156,12 +161,20 @@ export function useJornada() {
   useEffect(() => {
     let vivo = true
     ;(async () => {
+      // La del dia, abierta o cerrada: hace falta distinguir "todavia
+      // no empieza" de "ya termino".
+      const hoy = new Date()
+      const fechaHoy = new Date(hoy.getTime() - hoy.getTimezoneOffset() * 60000)
+        .toISOString().slice(0, 10)
       const { data } = await supabase.from('jornada')
         .select('id,organizacion_id,usuario_id,inicio,fin')
-        .is('fin', null).maybeSingle()
+        .eq('fecha', fechaHoy).maybeSingle()
 
       if (!vivo) return
-      if (data) {
+      if (data && (data as Jornada).fin) {
+        setJornada(data as Jornada)
+        setEstado('terminada')
+      } else if (data) {
         actual.current = data as Jornada
         setJornada(data as Jornada)
         setEstado('abierta')
@@ -245,6 +258,16 @@ export function useJornada() {
     }
 
     const j = (Array.isArray(data) ? data[0] : data) as Jornada
+
+    // La base ya no reabre una jornada cerrada: la devuelve como
+    // esta. Si viene con hora de fin, el dia ya termino.
+    if (j.fin) {
+      setJornada(j)
+      setEstado('terminada')
+      setAviso('Ya terminaste tu jornada de hoy. El check-in es uno por día.')
+      return
+    }
+
     actual.current = j
     setJornada(j)
     setEstado('abierta')

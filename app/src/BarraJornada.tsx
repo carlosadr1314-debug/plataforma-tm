@@ -101,6 +101,7 @@ export default function BarraJornada({ primeraVisita, dia }: Props) {
   }, [listo, horario, primeraVisita, estado])
 
   const abierta = estado === 'abierta'
+  const terminada = estado === 'terminada'
   const enComida = !!comida
 
   /**
@@ -171,11 +172,12 @@ export default function BarraJornada({ primeraVisita, dia }: Props) {
   )
 
   const limite = limiteCheckIn(primeraVisita, horario ?? null)
-  const tarde = !abierta && limite != null && Date.now() > limite.getTime()
+  const tarde = !abierta && !terminada && limite != null && Date.now() > limite.getTime()
   const restan = comida ? restanComida(comida.inicio, comida.minutos_asignados) : 0
   const pasado = enComida && restan < 0
 
   const canto = enComida ? (pasado ? c.naranja : c.azul)
+    : terminada ? c.exito
     : !abierta ? (tarde ? c.naranja : c.neutro)
     : retrasado ? c.naranja : c.exito
 
@@ -186,7 +188,10 @@ export default function BarraJornada({ primeraVisita, dia }: Props) {
                       enComida ? s.rotuloComida
                         : abierta ? (retrasado ? s.rotuloAlerta : s.rotuloVivo)
                         : tarde ? s.rotuloAlerta : null]}>
-          {enComida ? 'EN COMIDA' : abierta ? 'EN JORNADA' : 'SIN CHECK-IN'}
+          {enComida ? 'EN COMIDA'
+            : abierta ? 'EN JORNADA'
+            : terminada ? 'JORNADA TERMINADA'
+            : 'SIN CHECK-IN'}
         </Text>
         {enComida && comida ? (
           <Text style={[s.reloj, pasado && s.relojPasado]}>
@@ -215,6 +220,9 @@ export default function BarraJornada({ primeraVisita, dia }: Props) {
               ? `Tu comida terminó hace ${Math.abs(restan)} min. Toma la foto para volver.`
               : `Empezaste a las ${reloj(new Date(comida.inicio))}. ` +
                 'Para volver vas a tomar una foto.')
+          : terminada
+            ? 'Cerraste tu día. El check-in es uno por día, así que mañana ' +
+              'vuelves a empezar aquí.'
           : !abierta
             ? (limite
                 ? `Hazlo antes de las ${reloj(limite)}` +
@@ -249,7 +257,7 @@ export default function BarraJornada({ primeraVisita, dia }: Props) {
       {enComida ? (
         <Boton texto="YA REGRESÉ" ocupado={volviendo} onPress={volverDeComer}
                etiqueta="Terminar la comida y tomar la foto de regreso" />
-      ) : !abierta ? (
+      ) : terminada ? null : !abierta ? (
         <Boton texto="HACER CHECK-IN" ocupado={estado === 'ocupado'}
                onPress={hacerCheckIn} etiqueta="Hacer el check-in de seguridad" />
       ) : (

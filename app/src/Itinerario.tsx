@@ -295,10 +295,14 @@ export default function Itinerario() {
                 // empezar a trabajar, no una formalidad: sin el, la
                 // oficina no sabe que el promotor salio.
                 if (dia.estado !== 'abierta') {
+                  const cerro = dia.estado === 'terminada'
                   Alert.alert(
-                    'Falta tu check-in de seguridad',
-                    'Hazlo antes de empezar tu ruta. Es lo que le avisa a tu ' +
-                    'supervisor que ya vas en camino.',
+                    cerro ? 'Ya terminaste tu jornada' : 'Falta tu check-in de seguridad',
+                    cerro
+                      ? 'Cerraste tu día, así que ya no se pueden registrar visitas. ' +
+                        'Si te faltó algo, háblalo con tu supervisor.'
+                      : 'Hazlo antes de empezar tu ruta. Es lo que le avisa a tu ' +
+                        'supervisor que ya vas en camino.',
                     [{ text: 'Entendido' }])
                   return
                 }

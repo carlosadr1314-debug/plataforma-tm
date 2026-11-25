@@ -22,7 +22,7 @@ import FotoAmpliada, { TITULO_EVIDENCIA, type FotoVista }
 // =====================================================================
 
 type Comida = {
-  id: string; usuario_id: string; promotor: string; fecha: string
+  id: string; jornada_id: string; usuario_id: string; promotor: string; fecha: string
   inicio: string; fin: string | null
   minutos_asignados: number; minutos_tomados: number
   minutos_de_mas: number; abierta: boolean
@@ -145,8 +145,12 @@ export default function Jornadas() {
 
   useEffect(() => { cargar() }, [cargar])
 
-  const comidaDe = (usuarioId: string, fecha: string) =>
-    comidas.find(x => x.usuario_id === usuarioId && x.fecha === fecha) ?? null
+  // Por jornada, no por promotor y fecha: la comida cuelga de UNA
+  // jornada. Buscarla por (promotor, fecha) hacia que, con varias
+  // jornadas el mismo dia, la misma comida saliera repetida en todos
+  // los renglones.
+  const comidaDe = (jornadaId: string) =>
+    comidas.find(x => x.jornada_id === jornadaId) ?? null
 
   const fotoDe = (jornadaId: string, tipo: string) =>
     fotos.find(f => f.jornada_id === jornadaId && f.tipo === tipo) ?? null
@@ -209,7 +213,7 @@ export default function Jornadas() {
           </thead>
           <tbody>
             {jornadas.map(j => {
-              const cm = j.usuario ? comidaDe(j.usuario.id, j.fecha) : null
+              const cm = comidaDe(j.id)
               return (
                 <tr key={j.id}>
                   <td>{dia(j.fecha)}</td>

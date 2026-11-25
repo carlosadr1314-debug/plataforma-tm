@@ -340,6 +340,20 @@ begin
   end;
   perform pg_temp.afirmar('Una evidencia suelta se rechaza', not permitido);
 
+  -- Cerrar el dia y volver a hacer check-in NO abre otra jornada. El
+  -- indice de la 006 era parcial y solo cuidaba las abiertas, asi que
+  -- cerrar y reabrir daba una jornada nueva cada vez.
+  update jornada set fin = now() where usuario_id = auth.uid() and fin is null;
+  perform check_in_seguridad(19.58, -99.01, 12.0);
+  select count(*) into n from jornada
+   where usuario_id = auth.uid()
+     and fecha = (now() at time zone 'America/Mexico_City')::date;
+  perform pg_temp.afirmar('Cerrada la jornada, el check-in no abre otra', n = 1);
+
+  select count(*) into n from jornada
+   where usuario_id = auth.uid() and fin is null;
+  perform pg_temp.afirmar('Y no la reabre: sigue cerrada', n = 0);
+
   reset role;
 
   -- El promotor de la otra empresa no ve nada de esto.
