@@ -1,5 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
+import FotoAmpliada, { TITULO_EVIDENCIA, type FotoVista }
+  from '../componentes/FotoAmpliada'
 
 // El panel cuelga del PLAN, no de lo capturado. Si colgara de visita,
 // una parada que nadie toco no existiria: el cumplimiento saldria

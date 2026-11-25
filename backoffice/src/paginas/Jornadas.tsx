@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { supabase } from '../supabase'
+import { supabase } from '../lib/supabase'
 import FotoAmpliada, { TITULO_EVIDENCIA, type FotoVista }
   from '../componentes/FotoAmpliada'
 
