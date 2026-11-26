@@ -7,7 +7,8 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "mx.plataformatm.promotor"
     },
     "android": {
       "adaptiveIcon": {
@@ -22,7 +23,8 @@
         "ACCESS_FINE_LOCATION",
         "CAMERA",
         "POST_NOTIFICATIONS"
-      ]
+      ],
+      "package": "mx.plataformatm.promotor"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -48,6 +50,13 @@
         {
           "color": "#16324F",
           "defaultChannel": "checkin"
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Plataforma TM usa la cámara para la evidencia fotográfica y para leer códigos de barras.",
+          "recordAudioAndroid": false
         }
       ]
     ]

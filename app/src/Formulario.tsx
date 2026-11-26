@@ -13,6 +13,8 @@ import {
   type Pregunta, type Respuestas, type Valor,
 } from './reglasFormulario'
 import { tomarFoto, fotosDe, descartarFoto, type FotoPendiente } from './fotos'
+import Firma from './Firma'
+import LectorCodigo from './LectorCodigo'
 import { c, f, CIFRAS, TOCABLE } from './tema'
 
 // =====================================================================
@@ -304,9 +306,12 @@ function Campo({ pregunta, valor, skus, falta, fotos, tomando,
 
       {!soportada(p.tipo) ? (
         <Text style={s.sinSoporte}>
-          {p.tipo === 'firma' ? 'La firma se captura en la siguiente versión.'
-            : 'El lector de código de barras se agrega en la siguiente versión.'}
+          Este tipo de pregunta todavía no se captura desde el teléfono.
         </Text>
+      ) : p.tipo === 'firma' ? (
+        <Firma valor={valor} onCambio={v => onCambio(v)} />
+      ) : p.tipo === 'codigo_barras' ? (
+        <LectorCodigo valor={valor} onCambio={v => onCambio(v)} />
       ) : p.tipo === 'foto' ? (
         <Fotos fotos={fotos} tomando={tomando} onFoto={onFoto} onQuitar={onQuitarFoto} />
       ) : p.tipo === 'booleano' ? (

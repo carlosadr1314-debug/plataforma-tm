@@ -160,6 +160,11 @@ export function filaDeRespuesta(p: Pregunta, valor: Valor) {
   }
 }
 
-/** Los tipos que la aplicacion todavia no sabe capturar. */
-export const SIN_SOPORTE: TipoPregunta[] = ['firma', 'codigo_barras']
+/**
+ * Los tipos que la aplicacion todavia no sabe capturar. Vacio: ya se
+ * capturan todos. Se deja la lista y no se borra el concepto porque
+ * el dia que se agregue un tipo nuevo al editor, el telefono tiene
+ * que poder decir "esta todavia no" en vez de pintar un hueco.
+ */
+export const SIN_SOPORTE: TipoPregunta[] = []
 export const soportada = (t: TipoPregunta) => !SIN_SOPORTE.includes(t)

@@ -51,6 +51,21 @@ type Respuesta = {
   valor_bool: boolean | null; valor_fecha: string | null; valor_opcion: any
   pregunta: { texto: string; tipo: string; orden: number } | null
 }
+/**
+ * La firma se guarda como trazos, no como imagen: el telefono manda
+ * el tamano del recuadro y una ruta SVG por trazo. Aqui se vuelve a
+ * dibujar. Si llegara algo que no tiene esa forma, se devuelve null y
+ * la respuesta se muestra como texto, que es mejor que una caja rota.
+ */
+type Firma = { w: number; h: number; t: string[] }
+function leerFirma(v: unknown): Firma | null {
+  if (typeof v !== 'string' || v === '') return null
+  try {
+    const o = JSON.parse(v) as Firma
+    return Array.isArray(o?.t) && o.t.length > 0 && o.w > 0 && o.h > 0 ? o : null
+  } catch { return null }
+}
+
 // jsonb trae las de opcion como lista y las de por SKU como objeto.
 const esMapaSku = (v: unknown): v is Record<string, number | boolean> =>
   !!v && typeof v === 'object' && !Array.isArray(v)
@@ -191,6 +206,24 @@ export default function Visitas() {
   // fila en la base, porque el catalogo del cliente cambia con el
   // tiempo y una columna por producto no aguantaria.
   function renglonRespuesta(r: Respuesta) {
+    if (r.pregunta?.tipo === 'firma') {
+      const fi = leerFirma(r.valor_texto)
+      if (!fi) return <div className="r">Sin firmar</div>
+      return (
+        <svg className="firma" viewBox={`0 0 ${fi.w} ${fi.h}`}
+             role="img" aria-label="Firma capturada en la visita">
+          {fi.t.map((d, i) => (
+            <path key={i} d={d} stroke="#1C1A17" strokeWidth="2.5" fill="none"
+                  strokeLinecap="round" strokeLinejoin="round" />
+          ))}
+        </svg>
+      )
+    }
+
+    if (r.pregunta?.tipo === 'codigo_barras') {
+      return <div className="r codigo">{r.valor_texto || '—'}</div>
+    }
+
     if (!esMapaSku(r.valor_opcion)) return <div className="r">{textoRespuesta(r)}</div>
     const m = r.valor_opcion as Record<string, number | boolean>
     const filas = Object.keys(m)

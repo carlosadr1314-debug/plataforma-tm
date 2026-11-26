@@ -1,6 +1,6 @@
 // Prueba de las reglas del formulario. Corre con: npm run prueba
 import {
-  seMuestra, contestada, pendientes, filaDeRespuesta,
+  seMuestra, contestada, pendientes, filaDeRespuesta, SIN_SOPORTE,
   type Pregunta, type Respuestas,
 } from '../src/reglasFormulario.ts'
 
@@ -97,6 +97,23 @@ r = { p1: false, p2: 'se cayo el exhibidor' }
 afirmar('contestada la condicional, ya no falta nada', pendientes(form, r, []).length === 0)
 afirmar('las opcionales nunca bloquean',
         pendientes(form, r, []).every(p => p.id !== 'p3'))
+
+console.log('--- firma y codigo de barras ---')
+const firma = q({ id: 'fi', tipo: 'firma', obligatoria: true })
+afirmar('sin firmar no esta contestada', !contestada(firma, undefined, []))
+afirmar('una firma vacia tampoco', !contestada(firma, '', []))
+afirmar('con trazos si',
+        contestada(firma, '{"w":320,"h":170,"t":["M10,10 L20,20"]}', []))
+
+const codigo = q({ id: 'cb', tipo: 'codigo_barras', obligatoria: true })
+afirmar('sin codigo no esta contestada', !contestada(codigo, undefined, []))
+afirmar('con codigo si', contestada(codigo, '7501234567890', []))
+afirmar('la firma va a valor_texto tal cual',
+        filaDeRespuesta(firma, '{"w":1,"h":1,"t":["M0,0"]}').valor_texto ===
+          '{"w":1,"h":1,"t":["M0,0"]}')
+afirmar('y el codigo tambien',
+        filaDeRespuesta(codigo, '7501234567890').valor_texto === '7501234567890')
+afirmar('ya ningun tipo queda sin soporte', SIN_SOPORTE.length === 0)
 
 console.log('--- a que columna va cada tipo ---')
 afirmar('booleano va a valor_bool',
