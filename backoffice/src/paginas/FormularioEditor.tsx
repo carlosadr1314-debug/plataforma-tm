@@ -223,11 +223,25 @@ export default function FormularioEditor() {
                   <label htmlFor="psk">Producto asociado</label>
                   <select id="psk" disabled={!editable} value={actual.sku_id ?? ''}
                     onChange={e => guardar({ sku_id: e.target.value || null })}>
-                    <option value="">Sin producto</option>
+                    <option value="">Sin producto: pregunta por todos</option>
                     {skus.map(s => (
                       <option key={s.id} value={s.id}>{s.codigo} — {s.nombre}</option>
                     ))}
                   </select>
+                  {/* Sin producto elegido la pregunta se abre por cada SKU del
+                      cliente, y eso no se adivina leyendo "Sin producto": el
+                      promotor se encuentra con una tabla de veinte renglones
+                      que nadie penso. */}
+                  <p className="nota-panel" style={{ marginTop: 6 }}>
+                    {actual.sku_id
+                      ? 'La pregunta se hace solo para este producto.'
+                      : skus.length === 0
+                        ? 'Este cliente todavía no tiene productos en el catálogo, ' +
+                          'así que la pregunta no le pedirá nada al promotor.'
+                        : `Sin producto elegido, la pregunta se hace para los ` +
+                          `${skus.length} productos del catálogo de este cliente, ` +
+                          `uno por renglón. Si es obligatoria, hay que contestarlos todos.`}
+                  </p>
                 </div>
               )}
 

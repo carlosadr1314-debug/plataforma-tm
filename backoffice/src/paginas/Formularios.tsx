@@ -13,6 +13,9 @@ type Form = {
 export default function Formularios() {
   const { perfil } = useSesion()
   const editable = puede(perfil, 'crear_formularios')
+  // Armar formularios y sacarlos de circulacion son decisiones
+  // distintas: lo segundo afecta a quien ya los esta usando en campo.
+  const puedeDesactivar = puede(perfil, 'admin')
   const ir = useNavigate()
 
   const [lista, setLista] = useState<Form[]>([])
@@ -24,6 +27,10 @@ export default function Formularios() {
   const [clientes, setClientes] = useState<{ id: string; nombre: string }[]>([])
   const [cliente, setCliente] = useState('')
   const [error, setError] = useState('')
+  const [cambiando, setCambiando] = useState<string | null>(null)
+  // El error de la lista va aparte del de los paneles: ese solo se ve
+  // con un panel abierto, y esto pasa en la tabla.
+  const [avisoLista, setAvisoLista] = useState('')
   const [guardando, setGuardando] = useState(false)
 
   // Clonar una plantilla: hasta ahora se podia marcar un formulario
@@ -57,6 +64,34 @@ export default function Formularios() {
     setClonando(null)
     // Se abre de una vez para recortar lo que no aplique.
     ir(`/formularios/${data}`)
+  }
+
+  /**
+   * Saca de circulacion un formulario, o lo regresa. No borra nada: lo
+   * ya capturado con el se sigue consultando igual. Pasa por una
+   * funcion de la base porque pide permiso de administrador, que no es
+   * el mismo que el de armar formularios.
+   */
+  async function cambiarActivo(f: Form) {
+    setAvisoLista('')
+    setCambiando(f.id)
+    const { error: err } = await supabase.rpc('fijar_formulario_activo', {
+      p_formulario: f.id,
+      p_activo: !f.activo,
+    })
+    setCambiando(null)
+
+    if (err) {
+      setAvisoLista(err.message.includes('administrador')
+        ? 'Desactivar formularios es cosa de administradores.'
+        : 'No se pudo cambiar. ' + err.message)
+      return
+    }
+    setAvisoLista(f.activo
+      ? `"${f.nombre}" queda fuera de circulación. No se borró nada: lo ya ` +
+        'capturado con él se sigue consultando.'
+      : `"${f.nombre}" vuelve a estar disponible.`)
+    cargar()
   }
 
   async function cargar() {
@@ -114,6 +149,10 @@ export default function Formularios() {
         )}
       </div>
 
+      {avisoLista !== '' && (
+        <div className="aviso ojo" role="status">{avisoLista}</div>
+      )}
+
       <div className="tabla">
         {cargando ? <p className="vacio">Cargando formularios…</p>
           : lista.length === 0 ? (
@@ -152,6 +191,14 @@ export default function Formularios() {
                           Usar plantilla
                         </button>
                       )}
+                      {puedeDesactivar && (
+                        <button className="btn sec"
+                          style={{ minHeight: 38, fontSize: 14, marginRight: 6 }}
+                          disabled={cambiando === f.id}
+                          onClick={() => cambiarActivo(f)}>
+                          {cambiando === f.id ? '…' : f.activo ? 'Desactivar' : 'Activar'}
+                        </button>
+                      )}
                       <button className="btn sec" style={{ minHeight: 38, fontSize: 14 }}
                         onClick={() => ir(`/formularios/${f.id}`)}>
                         {editable ? 'Editar' : 'Ver'}
@@ -163,6 +210,10 @@ export default function Formularios() {
             </table>
           )}
       </div>
+
+      {avisoLista !== '' && (
+        <div className="aviso ojo" role="status">{avisoLista}</div>
+      )}
 
       {clonando && (
         <>

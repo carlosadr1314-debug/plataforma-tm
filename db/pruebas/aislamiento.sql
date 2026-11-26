@@ -138,6 +138,10 @@ begin
     ('eeee1111-0000-0000-0000-00000000000b', 'Producto de Bimbo'),
     ('eeee1111-0000-0000-0000-00000000000c', 'Producto de Nestle');
 
+  insert into formulario (id, organizacion_id, cliente_id, es_plantilla, nombre) values
+    ('eeee5555-0000-0000-0000-00000000000b', v_bimbo,
+     'eeee1111-0000-0000-0000-00000000000b', false, 'Auditoria de Bimbo');
+
   perform set_config('request.jwt.claims', '', true);
   raise notice 'Montaje listo: dos empresas de prueba.';
 end $$;
@@ -424,6 +428,18 @@ begin
    where cv = 'eeee1111-0000-0000-0000-00000000002b';
   perform pg_temp.afirmar('El promotor ve el cliente de su propia ruta', n = 1);
 
+  -- Desactivar formularios es de administradores, no de quien los
+  -- arma: sacar de circulacion algo que ya se usa en campo es otra
+  -- decision que redactar preguntas.
+  permitido := false;
+  begin
+    perform fijar_formulario_activo(
+      (select id from formulario where organizacion_id = v_bimbo limit 1), false);
+    permitido := true;
+  exception when others then null;
+  end;
+  perform pg_temp.afirmar('El promotor NO puede desactivar un formulario', not permitido);
+
   -- La fuga de la 019. Los dos promotores tienen el mismo cliente
   -- asignado; eso no los hace supervisores uno del otro.
   select count(*) into n from itinerario;
@@ -450,13 +466,26 @@ begin
   reset role;
 
   -- Y que no se haya apretado de mas: quien administra sigue viendo
-  -- el trabajo de los dos.
+  -- el trabajo de los dos, y si puede desactivar.
   perform set_config('request.jwt.claims',
     '{"sub":"eeee0000-0000-0000-0000-0000000000b2","role":"authenticated"}', true);
   set local role authenticated;
 
   select count(*) into n from itinerario;
   perform pg_temp.afirmar('El admin sigue viendo las rutas de ambos promotores', n = 2);
+
+  perform fijar_formulario_activo(
+    (select id from formulario where organizacion_id = v_bimbo limit 1), false);
+  select count(*) into n from formulario
+   where organizacion_id = v_bimbo and not activo;
+  perform pg_temp.afirmar('El admin si puede desactivarlo', n = 1);
+
+  -- Y se puede revertir: desactivar no es borrar.
+  perform fijar_formulario_activo(
+    (select id from formulario where organizacion_id = v_bimbo limit 1), true);
+  select count(*) into n from formulario
+   where organizacion_id = v_bimbo and activo;
+  perform pg_temp.afirmar('Y volver a activarlo', n >= 1);
 
   reset role;
 

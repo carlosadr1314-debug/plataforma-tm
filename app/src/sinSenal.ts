@@ -131,6 +131,20 @@ export function formularioGuardado(id: string) {
   })
 }
 
+/**
+ * Tira la copia guardada. Se usa cuando la oficina da de baja el
+ * formulario: si se quedara en el telefono, la pantalla de visita
+ * seguiria contando preguntas obligatorias de algo que ya nadie pide,
+ * y el promotor no podria cerrar la visita.
+ */
+function olvidarFormulario(id: string) {
+  return enFila(async () => {
+    const f = await leerJson<Record<string, FormularioGuardado>>(LLAVE_FORMULARIOS, {})
+    delete f[id]
+    await guardarJson(LLAVE_FORMULARIOS, f)
+  })
+}
+
 function guardarFormulario(id: string, datos: FormularioGuardado) {
   return enFila(async () => {
     const f = await leerJson<Record<string, FormularioGuardado>>(LLAVE_FORMULARIOS, {})
@@ -146,8 +160,12 @@ function guardarFormulario(id: string, datos: FormularioGuardado) {
  */
 export async function bajarFormulario(
   formularioId: string, clienteId: string,
-): Promise<{ datos: FormularioGuardado | null; error: string | null }> {
-  const [p, k] = await Promise.all([
+): Promise<{ datos: FormularioGuardado | null; error: string | null; desactivado: boolean }> {
+  const [f, p, k] = await Promise.all([
+    // Si la oficina lo saco de circulacion, el promotor no tiene que
+    // llenarlo. No se le bloquea la visita por eso: se le dice y se
+    // le deja cerrarla.
+    supabase.from('formulario').select('activo').eq('id', formularioId).maybeSingle(),
     supabase.from('pregunta')
       .select(`id,orden,texto,tipo,obligatoria,config,
                opcion_pregunta(id,orden,texto),
@@ -163,8 +181,18 @@ export async function bajarFormulario(
   // depende_de_id— asi que hay que decirle a PostgREST por cual de las
   // dos se arma el anidado. Sin la pista contesta que la relacion es
   // ambigua y no trae nada.
+  const desactivado = f.data ? (f.data as { activo: boolean }).activo === false : false
+  if (desactivado) {
+    await olvidarFormulario(formularioId)
+    return { datos: null, error: null, desactivado: true }
+  }
+
   if (p.error || !p.data) {
-    return { datos: await formularioGuardado(formularioId), error: p.error?.message ?? null }
+    return {
+      datos: await formularioGuardado(formularioId),
+      error: p.error?.message ?? null,
+      desactivado: false,
+    }
   }
 
   const datos: FormularioGuardado = {
@@ -178,7 +206,7 @@ export async function bajarFormulario(
     })),
   }
   await guardarFormulario(formularioId, datos)
-  return { datos, error: k.error?.message ?? null }
+  return { datos, error: k.error?.message ?? null, desactivado: false }
 }
 
 // ---------------------------------------------------------------------

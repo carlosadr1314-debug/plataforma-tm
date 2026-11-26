@@ -44,6 +44,7 @@ export default function Formulario({ itinerarioId, formularioId, clienteId, onCe
   const [respuestas, setRespuestas] = useState<Respuestas>({})
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')
+  const [desactivado, setDesactivado] = useState(false)
   // Las fotos no viven en respuestas: son archivos con su propia cola.
   const [fotos, setFotos] = useState<FotoPendiente[]>([])
   const [tomando, setTomando] = useState(false)
@@ -67,8 +68,19 @@ export default function Formulario({ itinerarioId, formularioId, clienteId, onCe
       }
 
       const r = await bajarFormulario(formularioId, clienteId)
-        .catch(e => ({ datos: null, error: String(e?.message ?? e) }))
+        .catch(e => ({ datos: null, error: String(e?.message ?? e), desactivado: false }))
       if (!vivo) return
+
+      // La oficina lo saco de circulacion mientras el promotor
+      // trabajaba. No se le cobra a el: se le dice y puede cerrar su
+      // visita sin llenarlo.
+      if (r.desactivado) {
+        setDatos(null)
+        setDesactivado(true)
+        setCargando(false)
+        return
+      }
+
       if (r.datos) setDatos(r.datos)
       if (!guardado && !r.datos) {
         // El mensaje del servidor va tal cual: un "no se pudo" a secas
@@ -183,6 +195,15 @@ export default function Formulario({ itinerarioId, formularioId, clienteId, onCe
       </View>
 
       <ScrollView contentContainerStyle={s.cuerpo} keyboardShouldPersistTaps="handled">
+        {desactivado && (
+          <View style={s.aviso}>
+            <Text style={s.avisoTexto}>
+              La oficina dio de baja este formulario, así que ya no hay que
+              llenarlo. Vuelve a la visita y ciérrala normal.
+            </Text>
+          </View>
+        )}
+
         {error !== '' && (
           <View style={s.aviso}><Text style={s.avisoTexto}>{error}</Text></View>
         )}
