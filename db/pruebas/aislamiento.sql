@@ -50,6 +50,7 @@ begin
     ('eeee0000-0000-0000-0000-0000000000b2'::uuid, 'prueba.badmin@local'),
     ('eeee0000-0000-0000-0000-0000000000b3'::uuid, 'prueba.bsuper@local'),
     ('eeee0000-0000-0000-0000-0000000000b4'::uuid, 'prueba.bprom@local'),
+    ('eeee0000-0000-0000-0000-0000000000b5'::uuid, 'prueba.bprom2@local'),
     ('eeee0000-0000-0000-0000-0000000000c1'::uuid, 'prueba.nraiz@local'),
     ('eeee0000-0000-0000-0000-0000000000c4'::uuid, 'prueba.nprom@local')
   ) as t(id, correo);
@@ -79,6 +80,10 @@ begin
     from perfil where organizacion_id = v_bimbo and nombre = 'Promotor';
 
   insert into usuario (id, organizacion_id, perfil_id, nombre, es_promotor, codigo)
+  select 'eeee0000-0000-0000-0000-0000000000b5', v_bimbo, id, 'Promotor Bimbo 2', true, '1043'
+    from perfil where organizacion_id = v_bimbo and nombre = 'Promotor';
+
+  insert into usuario (id, organizacion_id, perfil_id, nombre, es_promotor, codigo)
   select 'eeee0000-0000-0000-0000-0000000000c4', v_nestle, id, 'Promotor Nestle', true, '1042'
     from perfil where organizacion_id = v_nestle and nombre = 'Promotor';
 
@@ -92,6 +97,7 @@ begin
     ('eeee0000-0000-0000-0000-0000000000b2','eeee1111-0000-0000-0000-00000000000b'),
     ('eeee0000-0000-0000-0000-0000000000b3','eeee1111-0000-0000-0000-00000000000b'),
     ('eeee0000-0000-0000-0000-0000000000b4','eeee1111-0000-0000-0000-00000000000b'),
+    ('eeee0000-0000-0000-0000-0000000000b5','eeee1111-0000-0000-0000-00000000000b'),
     ('eeee0000-0000-0000-0000-0000000000c1','eeee1111-0000-0000-0000-00000000000c'),
     ('eeee0000-0000-0000-0000-0000000000c4','eeee1111-0000-0000-0000-00000000000c');
 
@@ -116,6 +122,18 @@ begin
   insert into visita (itinerario_id, estado, check_in) values
     ('eeee3333-0000-0000-0000-00000000000b', 'completada', now());
 
+  -- La ruta del segundo promotor, sobre el cliente que AMBOS tienen
+  -- asignado en usuario_cliente. Es el caso que se escapo: tener el
+  -- cliente asignado no debe dejarte ver la ruta de tu companero.
+  insert into itinerario (id, cliente_id, usuario_id, pdv_id, fecha_programada) values
+    ('eeee3333-0000-0000-0000-00000000000d',
+     'eeee1111-0000-0000-0000-00000000000b',
+     'eeee0000-0000-0000-0000-0000000000b5',
+     'eeee2222-0000-0000-0000-00000000000b', current_date);
+
+  insert into visita (itinerario_id, estado, check_in) values
+    ('eeee3333-0000-0000-0000-00000000000d', 'completada', now());
+
   insert into producto (cliente_id, nombre) values
     ('eeee1111-0000-0000-0000-00000000000b', 'Producto de Bimbo'),
     ('eeee1111-0000-0000-0000-00000000000c', 'Producto de Nestle');
@@ -133,6 +151,10 @@ declare
   permitido  boolean;
   v_bimbo    uuid := (select id from organizacion where slug = 'pruebabimbo');
   v_nestle   uuid := (select id from organizacion where slug = 'pruebanestle');
+  -- Se cuenta ANTES de cambiar de rol: ya con RLS encima, la cuenta
+  -- saldria filtrada y la prueba se compararia contra si misma.
+  n_bimbo    int := (select count(*) from usuario where organizacion_id =
+                     (select id from organizacion where slug = 'pruebabimbo'));
 begin
   raise notice '--- Aislamiento entre empresas ---';
 
@@ -152,7 +174,7 @@ begin
   perform pg_temp.afirmar('El admin de Bimbo ve solo su catalogo', n = 1);
 
   select count(*) into n from usuario;
-  perform pg_temp.afirmar('El admin de Bimbo ve solo a su equipo (4)', n = 4);
+  perform pg_temp.afirmar('El admin de Bimbo ve solo a su equipo', n = n_bimbo);
 
   reset role;
 
@@ -402,6 +424,18 @@ begin
    where cv = 'eeee1111-0000-0000-0000-00000000002b';
   perform pg_temp.afirmar('El promotor ve el cliente de su propia ruta', n = 1);
 
+  -- La fuga de la 019. Los dos promotores tienen el mismo cliente
+  -- asignado; eso no los hace supervisores uno del otro.
+  select count(*) into n from itinerario;
+  perform pg_temp.afirmar('El promotor ve UNA ruta: la suya', n = 1);
+
+  select count(*) into n from itinerario
+   where id = 'eeee3333-0000-0000-0000-00000000000d';
+  perform pg_temp.afirmar('NO ve la ruta del otro promotor', n = 0);
+
+  select count(*) into n from visita;
+  perform pg_temp.afirmar('Ni la visita que el otro completo', n = 1);
+
   reset role;
 
   -- Y el de la otra empresa no, aunque tampoco este asignado a nadie.
@@ -412,6 +446,17 @@ begin
   select count(*) into n from clientes_visibles() as cv
    where cv = 'eeee1111-0000-0000-0000-00000000002b';
   perform pg_temp.afirmar('El promotor de otra empresa NO lo ve', n = 0);
+
+  reset role;
+
+  -- Y que no se haya apretado de mas: quien administra sigue viendo
+  -- el trabajo de los dos.
+  perform set_config('request.jwt.claims',
+    '{"sub":"eeee0000-0000-0000-0000-0000000000b2","role":"authenticated"}', true);
+  set local role authenticated;
+
+  select count(*) into n from itinerario;
+  perform pg_temp.afirmar('El admin sigue viendo las rutas de ambos promotores', n = 2);
 
   reset role;
 
@@ -489,8 +534,11 @@ begin
    where cliente_id = 'eeee1111-0000-0000-0000-00000000002b';
   perform pg_temp.afirmar('El admin ve rutas de una marca que no tiene asignada', n = 1);
 
+  -- Las dos: la de la marca sin asignar y la del segundo promotor.
+  -- Quien administra ve el trabajo de todo su equipo; es el promotor
+  -- quien se acota a lo suyo.
   select count(*) into n from visita;
-  perform pg_temp.afirmar('Y las visitas que el promotor ya completo', n = 1);
+  perform pg_temp.afirmar('Y las visitas que sus promotores completaron', n = 2);
   reset role;
 
   -- La frontera entre empresas no se movio.
