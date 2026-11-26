@@ -50,6 +50,10 @@ export default function Formulario({ itinerarioId, formularioId, clienteId, onCe
   // Las fotos no viven en respuestas: son archivos con su propia cola.
   const [fotos, setFotos] = useState<FotoPendiente[]>([])
   const [tomando, setTomando] = useState(false)
+  // Mientras el dedo firma, el formulario no se desplaza. El gesto en
+  // captura de Firma ya lo bloquea, pero apagar el scroll ademas lo
+  // deja parejo en Android, donde el ScrollView es mas insistente.
+  const [firmando, setFirmando] = useState(false)
 
   useEffect(() => {
     let vivo = true
@@ -196,7 +200,8 @@ export default function Formulario({ itinerarioId, formularioId, clienteId, onCe
         </Text>
       </View>
 
-      <ScrollView contentContainerStyle={s.cuerpo} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={s.cuerpo} keyboardShouldPersistTaps="handled"
+                  scrollEnabled={!firmando}>
         {desactivado && (
           <View style={s.aviso}>
             <Text style={s.avisoTexto}>
@@ -223,6 +228,7 @@ export default function Formulario({ itinerarioId, formularioId, clienteId, onCe
                        tomando={tomando}
                        onFoto={() => capturar(p)}
                        onQuitarFoto={quitar}
+                       onDibujando={setFirmando}
                        onCambio={v => responder(p, v)} />
               ))}
             </View>
@@ -290,10 +296,11 @@ function Fotos({ fotos, tomando, onFoto, onQuitar }: {
 // ---------------------------------------------------------------------
 
 function Campo({ pregunta, valor, skus, falta, fotos, tomando,
-                 onFoto, onQuitarFoto, onCambio }: {
+                 onFoto, onQuitarFoto, onDibujando, onCambio }: {
   pregunta: Pregunta; valor: Valor | undefined; skus: Sku[]
   falta: boolean; fotos: FotoPendiente[]; tomando: boolean
   onFoto: () => void; onQuitarFoto: (f: FotoPendiente) => void
+  onDibujando: (si: boolean) => void
   onCambio: (v: Valor) => void
 }) {
   const p = pregunta
@@ -309,7 +316,7 @@ function Campo({ pregunta, valor, skus, falta, fotos, tomando,
           Este tipo de pregunta todavía no se captura desde el teléfono.
         </Text>
       ) : p.tipo === 'firma' ? (
-        <Firma valor={valor} onCambio={v => onCambio(v)} />
+        <Firma valor={valor} onCambio={v => onCambio(v)} onDibujando={onDibujando} />
       ) : p.tipo === 'codigo_barras' ? (
         <LectorCodigo valor={valor} onCambio={v => onCambio(v)} />
       ) : p.tipo === 'foto' ? (

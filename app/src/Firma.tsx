@@ -34,29 +34,43 @@ export function leerFirma(valor: unknown): FirmaGuardada | null {
   } catch { return null }
 }
 
-export default function Firma({ valor, onCambio }: {
+export default function Firma({ valor, onCambio, onDibujando }: {
   valor: unknown
   onCambio: (v: string | null) => void
+  /** Avisa mientras el dedo esta abajo, para que el padre deje de desplazarse. */
+  onDibujando?: (si: boolean) => void
 }) {
   const guardada = leerFirma(valor)
   const [trazos, setTrazos] = useState<string[]>(guardada?.t ?? [])
   const [enCurso, setEnCurso] = useState('')
   const caja = useRef({ w: guardada?.w ?? 0, h: guardada?.h ?? 0 })
   const actual = useRef('')
+  // Los trazos tambien en una ref: el PanResponder se arma una sola
+  // vez y se quedaria con la lista que habia en ese momento.
+  const hechos = useRef<string[]>(guardada?.t ?? [])
+  const avisar = useRef(onDibujando)
+  avisar.current = onDibujando
 
   // El PanResponder se arma una sola vez: si se recreara en cada
   // repintado, soltaria el trazo a media firma.
   const responder = useRef(
     PanResponder.create({
+      // En captura: el gesto se reclama ANTES de que el ScrollView de
+      // atras lo tome. Sin esto la pantalla se desplaza a media firma
+      // y el trazo sale cortado.
+      onStartShouldSetPanResponderCapture: () => true,
+      onMoveShouldSetPanResponderCapture: () => true,
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
-      // El dedo que firma no debe arrastrar la pantalla de atras.
+      // Y una vez tomado no se suelta.
       onPanResponderTerminationRequest: () => false,
+      onShouldBlockNativeResponder: () => true,
 
       onPanResponderGrant: e => {
         const { locationX, locationY } = e.nativeEvent
         actual.current = `M${locationX.toFixed(1)},${locationY.toFixed(1)}`
         setEnCurso(actual.current)
+        avisar.current?.(true)
       },
       onPanResponderMove: e => {
         const { locationX, locationY } = e.nativeEvent
@@ -67,12 +81,21 @@ export default function Firma({ valor, onCambio }: {
         const t = actual.current
         actual.current = ''
         setEnCurso('')
+        avisar.current?.(false)
         if (!t) return
-        setTrazos(previos => {
-          const todos = [...previos, t]
-          onCambio(serializar({ w: caja.current.w, h: caja.current.h, t: todos }))
-          return todos
-        })
+
+        // onCambio NO va adentro del actualizador de estado: React lo
+        // ejecuta durante el render, y avisarle al padre desde ahi es
+        // cambiar un componente mientras se dibuja otro.
+        const todos = [...hechos.current, t]
+        hechos.current = todos
+        setTrazos(todos)
+        onCambio(serializar({ w: caja.current.w, h: caja.current.h, t: todos }))
+      },
+      onPanResponderTerminate: () => {
+        actual.current = ''
+        setEnCurso('')
+        avisar.current?.(false)
       },
     }),
   ).current
@@ -83,6 +106,7 @@ export default function Firma({ valor, onCambio }: {
   }
 
   function borrar() {
+    hechos.current = []
     setTrazos([])
     setEnCurso('')
     actual.current = ''
