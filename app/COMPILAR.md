@@ -27,6 +27,40 @@ eas login
 eas init
 ```
 
+## Las variables de Supabase: el paso que se olvida
+
+`app/.env` está en `.gitignore`, y con razón. Pero eso significa que
+**no se sube a los servidores de Expo**: ahí se compila a partir de lo
+que está en git. Sin esas dos variables la compilación termina bien y
+el APK abre en una pantalla muerta, porque no sabe a qué Supabase
+hablarle.
+
+Se guardan una vez en EAS, que las inyecta al compilar. Esto las lee
+de tu propio `.env`, así no hay que copiar y pegar nada:
+
+```bash
+cd ~/Documents/plataforma-tm/app
+set -a; source .env; set +a
+
+for AMBIENTE in development preview production; do
+  eas env:set --name EXPO_PUBLIC_SUPABASE_URL \
+    --value "$EXPO_PUBLIC_SUPABASE_URL" \
+    --environment $AMBIENTE --visibility plaintext
+  eas env:set --name EXPO_PUBLIC_SUPABASE_ANON_KEY \
+    --value "$EXPO_PUBLIC_SUPABASE_ANON_KEY" \
+    --environment $AMBIENTE --visibility plaintext
+done
+```
+
+`plaintext` es lo correcto aquí: la llave anónima viaja dentro de cada
+APK de todos modos, no es un secreto. Lo que la protege es RLS, no el
+esconderla. Lo que **no** debe subirse nunca así es la llave de
+servicio (`service_role`), que la aplicación no usa.
+
+Cada perfil de `eas.json` ya dice de qué ambiente toma sus variables:
+`desarrollo` → development, `prueba` → preview, `produccion` →
+production.
+
 ## Las tres variantes
 
 `eas.json` ya trae tres perfiles, cada uno para un momento distinto:
@@ -38,19 +72,23 @@ eas init
 | `produccion` | Para subir a Google Play. | AAB, se sube a la tienda |
 
 ```bash
-# La primera que conviene hacer: ya con avisos de verdad y sin el
-# bundle de desarrollo encima.
-eas build --profile desarrollo --platform android
+# Para repartir: se instala y funciona sola, sin la laptop encendida.
+eas build --profile prueba --platform android
 ```
 
 Tarda entre 10 y 25 minutos y corre en los servidores de Expo; puedes
 cerrar la terminal. Al final te da un enlace para descargar el APK en
 el teléfono.
 
-Después de instalarla, el servidor de desarrollo se levanta igual:
+El perfil `prueba` trae el código empaquetado adentro: se instala y
+funciona, sin servidor. Es el que se le pasa a un promotor.
+
+El perfil `desarrollo` es distinto: reemplaza a Expo Go para seguir
+programando con módulos nativos, y necesita el servidor prendido.
 
 ```bash
-npx expo start --dev-client
+eas build --profile desarrollo --platform android   # una vez
+npx expo start --dev-client                         # cada sesión
 ```
 
 ## El identificador del paquete
